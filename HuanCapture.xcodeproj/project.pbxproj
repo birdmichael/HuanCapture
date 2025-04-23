@@ -6,14 +6,51 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		80072E9B2DB90DAF00F47A95 /* WebRTC in Frameworks */ = {isa = PBXBuildFile; productRef = 80072E9A2DB90DAF00F47A95 /* WebRTC */; };
+		805E14E22DB7F696004CF67D /* HuanCapture.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 805E14C82DB7F630004CF67D /* HuanCapture.framework */; };
+		805E14E32DB7F696004CF67D /* HuanCapture.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 805E14C82DB7F630004CF67D /* HuanCapture.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		805E155B2DB90278004CF67D /* WebRTC in Frameworks */ = {isa = PBXBuildFile; productRef = 805E155A2DB90278004CF67D /* WebRTC */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		805E14E42DB7F696004CF67D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 805E14BF2DB7F630004CF67D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 805E14C72DB7F630004CF67D;
+			remoteInfo = HuanCapture;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		805E14E62DB7F696004CF67D /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				805E14E32DB7F696004CF67D /* HuanCapture.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		805E14C82DB7F630004CF67D /* HuanCapture.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = HuanCapture.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		805E14D62DB7F652004CF67D /* Demo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Demo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		805E14CA2DB7F630004CF67D /* HuanCapture */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = HuanCapture;
+			sourceTree = "<group>";
+		};
+		805E14D72DB7F652004CF67D /* Demo */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Demo;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -23,6 +60,16 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				805E155B2DB90278004CF67D /* WebRTC in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		805E14D32DB7F652004CF67D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				805E14E22DB7F696004CF67D /* HuanCapture.framework in Frameworks */,
+				80072E9B2DB90DAF00F47A95 /* WebRTC in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -33,6 +80,8 @@
 			isa = PBXGroup;
 			children = (
 				805E14CA2DB7F630004CF67D /* HuanCapture */,
+				805E14D72DB7F652004CF67D /* Demo */,
+				805E14E12DB7F696004CF67D /* Frameworks */,
 				805E14C92DB7F630004CF67D /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,8 +90,16 @@
 			isa = PBXGroup;
 			children = (
 				805E14C82DB7F630004CF67D /* HuanCapture.framework */,
+				805E14D62DB7F652004CF67D /* Demo.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		805E14E12DB7F696004CF67D /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -76,10 +133,36 @@
 			);
 			name = HuanCapture;
 			packageProductDependencies = (
+				805E155A2DB90278004CF67D /* WebRTC */,
 			);
 			productName = HuanCapture;
 			productReference = 805E14C82DB7F630004CF67D /* HuanCapture.framework */;
 			productType = "com.apple.product-type.framework";
+		};
+		805E14D52DB7F652004CF67D /* Demo */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 805E14DE2DB7F653004CF67D /* Build configuration list for PBXNativeTarget "Demo" */;
+			buildPhases = (
+				805E14D22DB7F652004CF67D /* Sources */,
+				805E14D32DB7F652004CF67D /* Frameworks */,
+				805E14D42DB7F652004CF67D /* Resources */,
+				805E14E62DB7F696004CF67D /* Embed Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				805E14E52DB7F696004CF67D /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				805E14D72DB7F652004CF67D /* Demo */,
+			);
+			name = Demo;
+			packageProductDependencies = (
+				80072E9A2DB90DAF00F47A95 /* WebRTC */,
+			);
+			productName = Demo;
+			productReference = 805E14D62DB7F652004CF67D /* Demo.app */;
+			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 
@@ -93,6 +176,10 @@
 				TargetAttributes = {
 					805E14C72DB7F630004CF67D = {
 						CreatedOnToolsVersion = 16.3;
+						LastSwiftMigration = 1630;
+					};
+					805E14D52DB7F652004CF67D = {
+						CreatedOnToolsVersion = 16.3;
 					};
 				};
 			};
@@ -105,18 +192,29 @@
 			);
 			mainGroup = 805E14BE2DB7F630004CF67D;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				805E15592DB90278004CF67D /* XCRemoteSwiftPackageReference "WebRTC" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 805E14C92DB7F630004CF67D /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
 				805E14C72DB7F630004CF67D /* HuanCapture */,
+				805E14D52DB7F652004CF67D /* Demo */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		805E14C62DB7F630004CF67D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		805E14D42DB7F652004CF67D /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -133,7 +231,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		805E14D22DB7F652004CF67D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		805E14E52DB7F696004CF67D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 805E14C72DB7F630004CF67D /* HuanCapture */;
+			targetProxy = 805E14E42DB7F696004CF67D /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		805E14CD2DB7F630004CF67D /* Debug */ = {
@@ -267,8 +380,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEFINES_MODULE = YES;
 				DEVELOPMENT_TEAM = SUKY3PD99D;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
@@ -291,6 +406,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_INSTALL_MODULE = YES;
 				SWIFT_INSTALL_OBJC_HEADER = NO;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -300,8 +416,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEFINES_MODULE = YES;
 				DEVELOPMENT_TEAM = SUKY3PD99D;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
@@ -329,6 +447,64 @@
 			};
 			name = Release;
 		};
+		805E14DF2DB7F653004CF67D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = SUKY3PD99D;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "使用你的摄像头";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.birdmichael.Demo;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		805E14E02DB7F653004CF67D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = SUKY3PD99D;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "使用你的摄像头";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.birdmichael.Demo;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -350,7 +526,40 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		805E14DE2DB7F653004CF67D /* Build configuration list for PBXNativeTarget "Demo" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				805E14DF2DB7F653004CF67D /* Debug */,
+				805E14E02DB7F653004CF67D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		805E15592DB90278004CF67D /* XCRemoteSwiftPackageReference "WebRTC" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/stasel/WebRTC.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 135.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		80072E9A2DB90DAF00F47A95 /* WebRTC */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 805E15592DB90278004CF67D /* XCRemoteSwiftPackageReference "WebRTC" */;
+			productName = WebRTC;
+		};
+		805E155A2DB90278004CF67D /* WebRTC */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 805E15592DB90278004CF67D /* XCRemoteSwiftPackageReference "WebRTC" */;
+			productName = WebRTC;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 805E14BF2DB7F630004CF67D /* Project object */;
 }

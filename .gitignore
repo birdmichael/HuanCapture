@@ -1,0 +1,45 @@
+# Xcode
+build/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata/
+*.xccheckout
+*.moved-aside
+DerivedData/
+*.hmap
+*.ipa
+*.app
+*.dSYM/
+*.xcscheme
+*.xcworkspace
+
+# Swift Package Manager
+.build/
+Packages/
+*.resolved
+
+# Frameworks (ignore built frameworks)
+*.xcframework/
+
+# Cocoapods
+Pods/
+
+# Carthage
+Carthage/
+
+# macOS
+.DS_Store
+
+# Temporary Files
+*.swp
+*~
+.fuse_hidden*
+
+# User Specific
+*.xcuserdatad/
