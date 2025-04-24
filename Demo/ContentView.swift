@@ -22,6 +22,7 @@ struct ContentView: View {
     @State private var isStreaming = false
     @State private var isMirrored = false
     @State private var statusText = "准备就绪"
+    @State private var currentCameraTypeText = "广角"
     @State private var localSDPString = ""
     @State private var iceCandidatesString = ""
     @State private var receivedCandidates: [RTCIceCandidate] = []
@@ -56,6 +57,17 @@ struct ContentView: View {
         }
         .onReceive(huanCapture.$currentCameraPosition) { position in
             logger.debug("摄像头位置变更为: \(position == .front ? "前置" : "后置")")
+        }
+        .onReceive(huanCapture.$currentCameraType) { type in
+            switch type {
+            case .wideAngle:
+                currentCameraTypeText = "广角"
+            case .telephoto:
+                currentCameraTypeText = "长焦"
+            case .ultraWide:
+                currentCameraTypeText = "超广角"
+            }
+            logger.debug("摄像头类型变更为: \(currentCameraTypeText)")
         }
         .onAppear {
             isMirrored = false
@@ -93,7 +105,13 @@ struct ContentView: View {
     }
     
     private var horizontalLayout: some View {
-        HStack(spacing: 18) {
+        GeometryReader { geometry in
+            horizontalLayoutContent(geometry: geometry)
+        }
+    }
+    
+    private func horizontalLayoutContent(geometry: GeometryProxy) -> some View {
+        HStack(spacing: 10) {
             VStack {
                 Text("HuanCapture").font(.title2).bold()
                     .foregroundColor(.blue)
@@ -102,20 +120,38 @@ struct ContentView: View {
                 previewView
                     .padding(.horizontal, 8)
                 
+                if huanCapture.currentCameraPosition == .back {
+                    HStack {
+                        Text("当前: \(currentCameraTypeText)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(Color.gray.opacity(0.1))
+                            .cornerRadius(12)
+                    }
+                    .padding(.top, 4)
+                }
+                
                 Spacer()
             }
-            .frame(width: UIScreen.main.bounds.width * 0.6)
+            .frame(width: geometry.size.width * 0.55)
             
-            VStack(spacing: 16) {
-                controlButtons
-                    .padding(.top, 12)
-                
-                signalingInfoView
-                
-                Spacer()
+            VStack(spacing: 12) {
+                ScrollView {
+                    VStack(spacing: 12) {
+                        controlButtons
+                            .padding(.top, 8)
+                        
+                        Divider()
+                        
+                        signalingInfoView
+                    }
+                    .padding(.horizontal, 8)
+                }
             }
-            .padding(.horizontal, 8)
-            .frame(width: UIScreen.main.bounds.width * 0.4)
+            .frame(width: geometry.size.width * 0.45)
+            .padding(.vertical, 10)
         }
     }
     
@@ -149,30 +185,92 @@ struct ContentView: View {
     }
     
     private var controlButtons: some View {
-        HStack(spacing: 30) {
-            Button {
-                toggleStreaming()
-            } label: {
-                Image(systemName: isStreaming ? "stop.circle.fill" : "play.circle.fill")
-                    .font(.system(size: 36))
-                    .foregroundColor(isStreaming ? .red : .green)
+        VStack(spacing: 20) {
+            HStack(spacing: 30) {
+                Button {
+                    toggleStreaming()
+                } label: {
+                    Image(systemName: isStreaming ? "stop.circle.fill" : "play.circle.fill")
+                        .font(.system(size: 36))
+                        .foregroundColor(isStreaming ? .red : .green)
+                }
+                
+                Button {
+                    huanCapture.switchCamera()
+                } label: {
+                    Image(systemName: "arrow.triangle.2.circlepath.camera")
+                        .font(.system(size: 30))
+                        .foregroundColor(.blue)
+                }
+                
+                Button {
+                    isMirrored.toggle()
+                    huanCapture.setPreviewMirrored(isMirrored)
+                } label: {
+                    Image(systemName: "arrow.left.and.right")
+                        .font(.system(size: 30))
+                        .foregroundColor(isMirrored ? .indigo : .gray)
+                }
             }
             
-            Button {
-                huanCapture.switchCamera()
-            } label: {
-                Image(systemName: "arrow.triangle.2.circlepath.camera")
-                    .font(.system(size: 30))
-                    .foregroundColor(.blue)
-            }
-            
-            Button {
-                isMirrored.toggle()
-                huanCapture.setPreviewMirrored(isMirrored)
-            } label: {
-                Image(systemName: "arrow.left.and.right")
-                    .font(.system(size: 30))
-                    .foregroundColor(isMirrored ? .indigo : .gray)
+            if huanCapture.currentCameraPosition == .back {
+                VStack(spacing: 8) {
+                    Text("相机类型")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                    
+                    HStack(spacing: 5) {
+                        ForEach(huanCapture.availableBackCameraTypes, id: \.self) { cameraType in
+                            Button {
+                                huanCapture.switchToBackCameraType(cameraType)
+                            } label: {
+                                VStack(spacing: 3) {
+                                    Image(systemName: cameraType == .wideAngle ? "camera.aperture" : 
+                                                     (cameraType == .telephoto ? "camera.circle" : "camera.metering.center.weighted"))
+                                        .font(.system(size: 16))
+                                    
+                                    Text(cameraType == .wideAngle ? "广角" : 
+                                         (cameraType == .telephoto ? "长焦" : "超广角"))
+                                        .font(.system(size: 10, weight: .medium))
+                                }
+                                .frame(width: 40, height: 40)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(huanCapture.currentCameraType == cameraType ? 
+                                              Color.blue.opacity(0.2) : Color.gray.opacity(0.1))
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(huanCapture.currentCameraType == cameraType ? 
+                                                Color.blue : Color.clear, lineWidth: 1.5)
+                                )
+                            }
+                            .buttonStyle(BorderlessButtonStyle())
+                        }
+                        
+                        Button {
+                            huanCapture.switchBackCameraType()
+                        } label: {
+                            VStack(spacing: 3) {
+                                Image(systemName: "arrow.triangle.2.circlepath")
+                                    .font(.system(size: 16))
+                                
+                                Text("切换")
+                                    .font(.system(size: 10, weight: .medium))
+                            }
+                            .frame(width: 40, height: 40)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color.blue.opacity(0.15))
+                            )
+                        }
+                        .buttonStyle(BorderlessButtonStyle())
+                    }
+                }
+                .padding(.vertical, 8)
+                .transition(.opacity)
+                .animation(.easeInOut, value: huanCapture.currentCameraPosition)
+                .animation(.easeInOut, value: huanCapture.currentCameraType)
             }
         }
     }
@@ -204,7 +302,7 @@ struct ContentView: View {
                 }
                 .padding(4)
             }
-            .frame(height: deviceOrientation.isPortrait ? 160 : 200)
+            .frame(height: deviceOrientation.isPortrait ? 160 : 150)
         } label: {
             Label("信令信息", systemImage: "network")
                 .font(.headline)

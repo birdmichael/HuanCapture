@@ -15,6 +15,7 @@ HuanCapture是一个为macOS/iOS设计的Swift视频捕获和WebRTC集成库，�
 - 简单易用的视频捕获和WebRTC集成
 - 完全支持SwiftUI架构
 - 提供前后摄像头切换功能
+- **支持后置摄像头类型切换**（广角、长焦、超广角）
 - 实时视频预览
 - WebRTC信令状态监控
 - 支持自定义配置
@@ -124,7 +125,55 @@ struct ContentView: View {
 }
 ```
 
-### 4. WebRTC集成
+### 4. 后置摄像头类型切换
+
+对于支持多摄像头的iOS设备，HuanCapture提供两种方式在后置摄像头模式下切换不同类型的摄像头：
+
+#### 循环切换到下一个摄像头类型
+
+```swift
+// 检查当前摄像头位置
+// 循环切换到下一个后置摄像头类型 (广角 -> 长焦 -> 超广角 -> 广角)
+if let nextType = captureManager.switchBackCameraType() {
+    print("成功切换到下一个摄像头类型: \(nextType.localizedName)")
+}
+```
+
+#### 直接切换到指定摄像头类型
+
+```swift
+// 查看可用的后置摄像头类型
+let availableTypes = captureManager.availableBackCameraTypes
+
+// 切换到指定类型的摄像头
+if let resultType = captureManager.switchToBackCameraType(.telephoto) {
+    print("成功切换到: \(resultType.localizedName)")
+} else {
+    print("切换失败，该类型可能不可用")
+}
+
+// 尝试切换到超广角摄像头
+_ = captureManager.switchToBackCameraType(.ultraWide)
+```
+
+#### 获取当前摄像头类型
+
+```swift
+// 获取当前摄像头类型
+let cameraType = captureManager.currentCameraType
+switch cameraType {
+case .wideAngle:
+    print("当前使用广角摄像头")
+case .telephoto:
+    print("当前使用长焦摄像头")
+case .ultraWide:
+    print("当前使用超广角摄像头")
+}
+```
+
+> 注意：系统在初始化时会自动检测当前设备支持的摄像头类型，并将其存储在`availableBackCameraTypes`数组中。如果尝试切换到不可用的摄像头类型，方法会返回`nil`。
+
+### 5. WebRTC集成
 
 为了完成WebRTC通信，您需要处理会话描述协议(SDP)交换和ICE候选者：
 

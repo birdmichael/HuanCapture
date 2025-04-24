@@ -9,6 +9,34 @@ import AVFoundation
 import OSLog
 import Combine
 
+public enum CameraType {
+    case wideAngle
+    case telephoto
+    case ultraWide
+    
+    var deviceType: AVCaptureDevice.DeviceType {
+        switch self {
+        case .wideAngle:
+            return .builtInWideAngleCamera
+        case .telephoto:
+            return .builtInTelephotoCamera
+        case .ultraWide:
+            return .builtInUltraWideCamera
+        }
+    }
+    
+    var localizedName: String {
+        switch self {
+        case .wideAngle:
+            return "广角"
+        case .telephoto:
+            return "长焦"
+        case .ultraWide:
+            return "超广角"
+        }
+    }
+}
+
 
 public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampleBufferDelegate, RTCPeerConnectionDelegate, ObservableObject {
 
@@ -16,6 +44,8 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
     @Published public private(set) var localSDP: RTCSessionDescription?
     @Published public private(set) var captureError: Error?
     @Published public private(set) var currentCameraPosition: AVCaptureDevice.Position = .back
+    @Published public private(set) var currentCameraType: CameraType = .wideAngle
+    @Published public private(set) var availableBackCameraTypes: [CameraType] = []
     @Published public var deviceOrientation: UIDeviceOrientation = .portrait
     public let iceCandidateSubject = PassthroughSubject<RTCIceCandidate, Never>()
     public let previewView: UIView
@@ -96,7 +126,11 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
         captureSession.sessionPreset = .vga640x480
 
         currentCameraPosition = .back
-        guard let videoDevice = findCamera(position: currentCameraPosition) else {
+        currentCameraType = .wideAngle
+        
+
+        detectAvailableBackCameraTypes()
+        guard let videoDevice = findCamera(position: currentCameraPosition, type: currentCameraType) else {
             if isLoggingEnabled { logger.error("Failed to find back camera.") }
             DispatchQueue.main.async { [weak self] in
                  guard let self = self else { return }
@@ -145,8 +179,14 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
         if isLoggingEnabled { logger.debug("AVFoundation setup complete.") }
     }
 
-    private func findCamera(position: AVCaptureDevice.Position) -> AVCaptureDevice? {
-        if isLoggingEnabled { logger.debug("Searching for camera with position: \(position.rawValue)") }
+    private func findCamera(position: AVCaptureDevice.Position, type: CameraType? = nil) -> AVCaptureDevice? {
+        if isLoggingEnabled { 
+            if let type = type {
+                logger.debug("Searching for camera with position: \(position.rawValue) and type: \(type.localizedName)")
+            } else {
+                logger.debug("Searching for camera with position: \(position.rawValue)")
+            }
+        }
 
         #if os(iOS)
         let deviceTypes: [AVCaptureDevice.DeviceType] = [.builtInWideAngleCamera, .builtInTelephotoCamera, .builtInUltraWideCamera]
@@ -157,12 +197,25 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
         #endif
 
         let discoverySession = AVCaptureDevice.DiscoverySession(deviceTypes: deviceTypes, mediaType: .video, position: position)
-
+        
+        // 如果指定了相机类型，则优先查找该类型
+        if let type = type {
+            let targetDeviceType = type.deviceType
+            if let targetCamera = discoverySession.devices.first(where: { $0.deviceType == targetDeviceType }) {
+                if isLoggingEnabled { logger.info("Found camera of requested type: \(targetCamera.localizedName)") }
+                return targetCamera
+            } else {
+                if isLoggingEnabled { logger.warning("Camera of type \(type.localizedName) not found, falling back to default") }
+            }
+        }
+        
+        // 如果没有指定类型或找不到指定类型，则优先选择广角相机
         if let wideAngle = discoverySession.devices.first(where: { $0.deviceType == .builtInWideAngleCamera }) {
              if isLoggingEnabled { logger.info("Found built-in wide angle camera: \(wideAngle.localizedName)") }
             return wideAngle
         }
 
+        // 如果没有找到广角相机，则返回第一个可用的相机
         let device = discoverySession.devices.first
         if let device = device {
              if isLoggingEnabled { logger.info("Found camera: \(device.localizedName)") }
@@ -341,7 +394,9 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
             let targetPosition: AVCaptureDevice.Position = (self.currentCameraPosition == .back) ? .front : .back
             if self.isLoggingEnabled { self.logger.debug("Switching camera to position: \(targetPosition.rawValue)") }
 
-            guard let videoDevice = self.findCamera(position: targetPosition) else {
+            // 切换到前置摄像头时重置为广角类型，切换到后置时保持当前类型
+            let targetCameraType = targetPosition == .front ? .wideAngle : self.currentCameraType
+            guard let videoDevice = self.findCamera(position: targetPosition, type: targetCameraType) else {
                 if self.isLoggingEnabled { self.logger.error("Failed to find camera for position: \\(targetPosition.rawValue)") }
                 DispatchQueue.main.async { [weak self] in
                     guard let self = self else { return }
@@ -375,6 +430,9 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
                 self.videoDeviceInput = newVideoInput
                 DispatchQueue.main.async {
                      self.currentCameraPosition = targetPosition
+                     if targetPosition == .front {
+                         self.currentCameraType = .wideAngle
+                     }
                 }
                 if self.isLoggingEnabled { self.logger.info("Successfully switched camera to \(targetPosition.rawValue).") }
             } else {
@@ -398,6 +456,225 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
         internalPreviewView.transform = mirrored ? CGAffineTransform(scaleX: -1.0, y: 1.0) : .identity
     }
 
+    // MARK: - Camera Type Management
+    
+    @discardableResult
+    public func switchBackCameraType() -> CameraType? {
+        if let nextType = getNextAvailableCameraType() {
+            return switchToBackCameraType(nextType)
+        }
+        return nil
+    }
+    
+    @discardableResult
+    public func switchToBackCameraType(_ type: CameraType) -> CameraType? {
+        if isLoggingEnabled { logger.info("Attempting to switch to specific back camera type: \(type.localizedName)...") }
+        
+        guard currentCameraPosition == .back else {
+            if isLoggingEnabled { logger.warning("Cannot switch camera type when using front camera.") }
+            return nil
+        }
+        
+        guard availableBackCameraTypes.contains(type) else {
+            if isLoggingEnabled { logger.warning("Requested camera type \(type.localizedName) is not available on this device.") }
+            return nil
+        }
+        
+        if currentCameraType == type {
+            if isLoggingEnabled { logger.info("Already using camera type: \(type.localizedName)") }
+            return currentCameraType
+        }
+        
+        guard let captureSession = self.captureSession else {
+            if isLoggingEnabled { logger.warning("Capture session not initialized.") }
+            return nil
+        }
+        
+        var result: CameraType? = nil
+        let semaphore = DispatchSemaphore(value: 0)
+        
+        videoOutputQueue.async { [weak self] in
+            guard let self = self else { 
+                semaphore.signal()
+                return 
+            }
+            
+            if self.isLoggingEnabled { self.logger.debug("Switching camera type to: \(type.localizedName)") }
+            
+            guard let videoDevice = self.findCamera(position: .back, type: type) else {
+                if self.isLoggingEnabled { self.logger.error("Could not find camera device for type \(type.localizedName)") }
+                semaphore.signal()
+                return
+            }
+            
+            if self.switchToCamera(device: videoDevice, type: type) {
+                result = type
+            }
+            semaphore.signal()
+        }
+        
+        _ = semaphore.wait(timeout: .now() + 2.0)
+        return result
+    }
+    
+    private func getNextAvailableCameraType() -> CameraType? {
+        if availableBackCameraTypes.isEmpty || availableBackCameraTypes.count == 1 {
+            if isLoggingEnabled { logger.warning("No multiple available back camera types") }
+            return nil
+        }
+        
+        if let currentIndex = availableBackCameraTypes.firstIndex(where: { $0 == currentCameraType }) {
+            let nextIndex = (currentIndex + 1) % availableBackCameraTypes.count
+            return availableBackCameraTypes[nextIndex]
+        } else {
+            return availableBackCameraTypes.first
+        }
+    }
+    
+    private func switchBackCameraType_legacy() {
+        if isLoggingEnabled { logger.info("Attempting to switch back camera type...") }
+        
+        guard currentCameraPosition == .back else {
+            if isLoggingEnabled { logger.warning("Cannot switch camera type when using front camera.") }
+            return
+        }
+        
+        guard let captureSession = self.captureSession else {
+            if isLoggingEnabled { logger.warning("Capture session not initialized.") }
+            return
+        }
+        
+        videoOutputQueue.async { [weak self] in
+            guard let self = self else { return }
+            
+            guard let nextCameraType = self.getNextAvailableCameraType() else {
+                if self.isLoggingEnabled { self.logger.warning("No available next camera type") }
+                return
+            }
+            
+            if self.isLoggingEnabled { self.logger.debug("Switching camera type to: \(nextCameraType.localizedName)") }
+            
+
+            guard let videoDevice = self.findCamera(position: .back, type: nextCameraType) else {
+                if self.isLoggingEnabled { self.logger.warning("Could not find camera of type \(nextCameraType.localizedName), trying next type") }
+                
+                let alternativeType: CameraType
+                if let nextTypeIndex = self.availableBackCameraTypes.firstIndex(where: { $0 == nextCameraType }),
+                   self.availableBackCameraTypes.count > 1 {
+                    let alternativeIndex = (nextTypeIndex + 1) % self.availableBackCameraTypes.count
+                    alternativeType = self.availableBackCameraTypes[alternativeIndex]
+                } else {
+                    alternativeType = .wideAngle
+                }
+                
+                guard let alternativeDevice = self.findCamera(position: .back, type: alternativeType) else {
+                    if self.isLoggingEnabled { self.logger.error("No alternative camera types available") }
+                    DispatchQueue.main.async { [weak self] in
+                        guard let self = self else { return }
+                        self.captureError = NSError(domain: "HuanCaptureError", code: 12, userInfo: [NSLocalizedDescriptionKey: "没有可用的其他类型摄像头"])
+                    }
+                    return
+                }
+                
+                if self.isLoggingEnabled { self.logger.info("Found alternative camera type: \(alternativeType.localizedName)") }
+                self.switchToCamera(device: alternativeDevice, type: alternativeType)
+                return
+            }
+            
+            self.switchToCamera(device: videoDevice, type: nextCameraType)
+        }
+    }
+    private func switchToCamera(device: AVCaptureDevice, type: CameraType) -> Bool {
+        guard let captureSession = self.captureSession else { return false }
+        
+        guard let newVideoInput = try? AVCaptureDeviceInput(device: device) else {
+            if self.isLoggingEnabled { self.logger.error("Failed to create AVCaptureDeviceInput for the new camera.") }
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                self.captureError = NSError(domain: "HuanCaptureError", code: 13, userInfo: [NSLocalizedDescriptionKey: "无法创建新摄像头输入"])
+            }
+            return false
+        }
+        
+        captureSession.beginConfiguration()
+        defer {
+            captureSession.commitConfiguration()
+            if self.isLoggingEnabled { self.logger.debug("Capture session configuration committed.") }
+        }
+        
+        if let currentInput = self.videoDeviceInput {
+            captureSession.removeInput(currentInput)
+            if self.isLoggingEnabled { self.logger.debug("Removed old camera input.") }
+        }
+        
+        if captureSession.canAddInput(newVideoInput) {
+            captureSession.addInput(newVideoInput)
+            self.videoDeviceInput = newVideoInput
+            DispatchQueue.main.async {
+                self.currentCameraType = type
+            }
+            if self.isLoggingEnabled { self.logger.info("Successfully switched to camera type: \(type.localizedName)") }
+            return true
+        } else {
+            if self.isLoggingEnabled { self.logger.error("Could not add new camera input to capture session.") }
+            if let currentInput = self.videoDeviceInput, captureSession.canAddInput(currentInput) {
+                captureSession.addInput(currentInput)
+                if self.isLoggingEnabled { self.logger.warning("Re-added previous camera input after failing to add new one.") }
+            } else {
+                if self.isLoggingEnabled { self.logger.error("Failed to re-add previous input either. Capture session might be broken.") }
+            }
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                self.captureError = NSError(domain: "HuanCaptureError", code: 14, userInfo: [NSLocalizedDescriptionKey: "无法添加新摄像头输入"])
+            }
+            return false
+        }
+    }
+    
+    // MARK: - Available Camera Detection
+    
+    private func detectAvailableBackCameraTypes() {
+        if isLoggingEnabled { logger.debug("Detecting available back camera types...") }
+        
+        var detectedTypes: [CameraType] = []
+        
+        #if os(iOS)
+        let deviceTypes: [AVCaptureDevice.DeviceType] = [.builtInWideAngleCamera, .builtInTelephotoCamera, .builtInUltraWideCamera]
+        #elseif os(macOS)
+        let deviceTypes: [AVCaptureDevice.DeviceType] = [.builtInWideAngleCamera]
+        #else
+        let deviceTypes: [AVCaptureDevice.DeviceType] = []
+        #endif
+        
+        let discoverySession = AVCaptureDevice.DiscoverySession(deviceTypes: deviceTypes, mediaType: .video, position: .back)
+        
+        if discoverySession.devices.contains(where: { $0.deviceType == .builtInWideAngleCamera }) {
+            detectedTypes.append(.wideAngle)
+            if isLoggingEnabled { logger.info("Device supports back wide angle camera") }
+        }
+        
+        if discoverySession.devices.contains(where: { $0.deviceType == .builtInTelephotoCamera }) {
+            detectedTypes.append(.telephoto)
+            if isLoggingEnabled { logger.info("Device supports back telephoto camera") }
+        }
+        
+        if discoverySession.devices.contains(where: { $0.deviceType == .builtInUltraWideCamera }) {
+            detectedTypes.append(.ultraWide)
+            if isLoggingEnabled { logger.info("Device supports back ultra wide camera") }
+        }
+        
+        if detectedTypes.isEmpty {
+            detectedTypes.append(.wideAngle)
+            if isLoggingEnabled { logger.warning("No back camera types detected, using wide angle as default") }
+        }
+        
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.availableBackCameraTypes = detectedTypes
+            if self.isLoggingEnabled { self.logger.debug("Available back camera types: \(detectedTypes.map { $0.localizedName }.joined(separator: ", "))") }
+        }
+    }
+    
     // MARK: - Private Helpers
 
     private func startCaptureSession() {
