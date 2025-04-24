@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HuanCapture - WebRTC Viewer</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>HuanCapture WebRTC Viewer</h1>
+            <!-- Status indicators can go here or below settings -->
+        </header>
+        
+        <main>
+            <div class="settings">
+                <label for="ws-address">WebSocket Server:</label>
+                <input type="text" id="ws-address" value="ws://localhost:8080" placeholder="ws://ip.address:port">
+                <button id="connect-button">Connect</button>
+                <button id="disconnect-button" disabled>Disconnect</button>
+            </div>
+
+            <div class="status-container">
+                 <div class="status">
+                    <strong>WebSocket:</strong> <span id="ws-status">Disconnected</span>
+                </div>
+                <div class="status">
+                    <strong>WebRTC:</strong> <span id="webrtc-status">Idle</span>
+                </div>
+            </div>
+
+            <div class="video-container">
+                <video id="remote-video" autoplay playsinline></video>
+                <!-- Keep the message, main.js might control its visibility -->
+                <div id="no-video-message" style="display: none;">Connecting...</div> 
+            </div>
+            
+            <!-- Remove the right-side manual input panels -->
+            <!-- 
+            <div class="connection-panel">
+                <div class="panel-section">
+                    <h3>ICE候选者信息</h3>
+                    ...
+                </div>
+                <div class="panel-section">
+                    <h3>局域网连接</h3>
+                    ...
+                </div>
+            </div> 
+            -->
+        </main>
+        
+        <!-- Keep logs if desired, or remove -->
+        <!-- 
+        <div class="info-panel">
+            <h3>连接日志</h3>
+            <div id="log-container"></div>
+        </div> 
+        -->
+    </div>
+    
+    <!-- Remove adapter.js if not explicitly needed by your WebRTC logic -->
+    <!-- <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script> -->
+    <script src="main.js"></script>
+</body>
+</html>

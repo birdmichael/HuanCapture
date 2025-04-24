@@ -4,6 +4,22 @@ import HuanCapture
 import OSLog
 import Combine
 import UIKit
+import AVFoundation
+
+struct LogEntry: Identifiable {
+    let id = UUID()
+    let timestamp = Date()
+    let message: String
+    let level: LogLevel
+    
+    enum LogLevel { case info, warning, error }
+    
+    var formattedTimestamp: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss.SSS"
+        return formatter.string(from: timestamp)
+    }
+}
 
 struct CapturePreviewRepresentable: UIViewRepresentable {
     let captureView: UIView
@@ -17,384 +33,439 @@ struct CapturePreviewRepresentable: UIViewRepresentable {
 }
 
 struct ContentView: View {
-    @StateObject private var huanCapture = HuanCaptureManager()
+    @StateObject private var captureManager: HuanCaptureManager
+
+    private var config: HuanCaptureConfig
     
-    @State private var isStreaming = false
     @State private var isMirrored = false
-    @State private var statusText = "准备就绪"
-    @State private var currentCameraTypeText = "广角"
-    @State private var localSDPString = ""
-    @State private var iceCandidatesString = ""
-    @State private var receivedCandidates: [RTCIceCandidate] = []
-    @State private var deviceOrientation: UIDeviceOrientation = .portrait
+    @State private var showControls = false
+    @State private var logMessages: [LogEntry] = []
+    private let maxLogEntries = 100
     
-    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "ContentView")
+    init(config: HuanCaptureConfig = HuanCaptureConfig(enableWebSocketSignaling: true, isLoggingEnabled: true)) {
+        self.config = config
+        _captureManager = StateObject(wrappedValue: HuanCaptureManager(config: config))
+    }
 
     var body: some View {
-        Group {
-            if deviceOrientation == .portrait || deviceOrientation == .portraitUpsideDown {
-                verticalLayout
-            } else if deviceOrientation == .landscapeLeft || deviceOrientation == .landscapeRight {
-                horizontalLayout
-            } else {
-                verticalLayout
-            }
-        }
-        .onReceive(huanCapture.$connectionState) { newState in
-            updateStatus(for: newState)
-        }
-        .onReceive(huanCapture.$localSDP) { sdp in
-            handleLocalSDP(sdp)
-        }
-        .onReceive(huanCapture.iceCandidateSubject) { candidate in
-            handleICECandidate(candidate)
-        }
-        .onReceive(huanCapture.$captureError) { error in
-            if let error = error {
-                statusText = "错误: \(error.localizedDescription)"
-                logger.error("捕获错误: \(error.localizedDescription)")
-            }
-        }
-        .onReceive(huanCapture.$currentCameraPosition) { position in
-            logger.debug("摄像头位置变更为: \(position == .front ? "前置" : "后置")")
-        }
-        .onReceive(huanCapture.$currentCameraType) { type in
-            switch type {
-            case .wideAngle:
-                currentCameraTypeText = "广角"
-            case .telephoto:
-                currentCameraTypeText = "长焦"
-            case .ultraWide:
-                currentCameraTypeText = "超广角"
-            }
-            logger.debug("摄像头类型变更为: \(currentCameraTypeText)")
-        }
-        .onAppear {
-            isMirrored = false
-            huanCapture.setPreviewMirrored(isMirrored)
-            setupOrientationNotification()
-            logger.info("ContentView appeared, initial mirror state set to false")
-        }
-        .onDisappear {
-            if isStreaming {
-                huanCapture.stopStreaming()
-                logger.info("ContentView disappeared, stopped streaming.")
-            }
-            NotificationCenter.default.removeObserver(NotificationCenter.default.self, name: UIDevice.orientationDidChangeNotification, object: nil)
-        }
-    }
-    
-    private var verticalLayout: some View {
-        VStack(spacing: 18) {
-            Text("HuanCapture").font(.largeTitle).bold()
-                .foregroundColor(.blue)
-                .padding(.top, 12)
-            
-            previewView
-                .padding(.horizontal)
-            
-            controlButtons
-                .padding(.horizontal)
-                .padding(.vertical, 8)
-            
-            signalingInfoView
-                .padding(.horizontal)
-            
-            Spacer()
-        }
-    }
-    
-    private var horizontalLayout: some View {
-        GeometryReader { geometry in
-            horizontalLayoutContent(geometry: geometry)
-        }
-    }
-    
-    private func horizontalLayoutContent(geometry: GeometryProxy) -> some View {
-        HStack(spacing: 10) {
-            VStack {
-                Text("HuanCapture").font(.title2).bold()
-                    .foregroundColor(.blue)
-                    .padding(.top, 8)
-                
-                previewView
-                    .padding(.horizontal, 8)
-                
-                if huanCapture.currentCameraPosition == .back {
-                    HStack {
-                        Text("当前: \(currentCameraTypeText)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(Color.gray.opacity(0.1))
-                            .cornerRadius(12)
-                    }
-                    .padding(.top, 4)
-                }
-                
-                Spacer()
-            }
-            .frame(width: geometry.size.width * 0.55)
-            
-            VStack(spacing: 12) {
-                ScrollView {
-                    VStack(spacing: 12) {
-                        controlButtons
-                            .padding(.top, 8)
-                        
-                        Divider()
-                        
-                        signalingInfoView
-                    }
-                    .padding(.horizontal, 8)
-                }
-            }
-            .frame(width: geometry.size.width * 0.45)
-            .padding(.vertical, 10)
-        }
-    }
-    
-    private var previewView: some View {
         ZStack {
-            CapturePreviewRepresentable(captureView: huanCapture.previewView)
-                .frame(maxWidth: .infinity)
-                .aspectRatio(deviceOrientation.isPortrait ? 3/4 : 4/3, contentMode: .fit)
-                .background(Color.black.opacity(0.05))
-                .cornerRadius(16)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(isStreaming ? Color.blue : Color.gray.opacity(0.3), lineWidth: isStreaming ? 3 : 1)
-                )
-                .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
-                .animation(.easeInOut(duration: 0.3), value: isStreaming)
-            
+            HuanCapturePreview(captureManager: captureManager)
+                .edgesIgnoringSafeArea(.all)
+
             VStack {
-                Spacer()
-                Text(statusText)
-                    .font(.footnote).bold()
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(Color.black.opacity(0.7))
-                    .foregroundColor(.white)
-                    .cornerRadius(20)
-                    .padding(.bottom, 12)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-    }
-    
-    private var controlButtons: some View {
-        controlButtonsContent
-    }
-    
-    private var controlButtonsContent: some View {
-        VStack(spacing: 20) {
-            HStack(spacing: 30) {
-                Button {
-                    toggleStreaming()
-                } label: {
-                    Image(systemName: isStreaming ? "stop.circle.fill" : "play.circle.fill")
-                        .font(.system(size: 36))
-                        .foregroundColor(isStreaming ? .red : .green)
-                }
-                
-                Button {
-                    huanCapture.switchCamera()
-                } label: {
-                    Image(systemName: "arrow.triangle.2.circlepath.camera")
-                        .font(.system(size: 30))
-                        .foregroundColor(.blue)
-                }
-                
-                Button {
-                    isMirrored.toggle()
-                    huanCapture.setPreviewMirrored(isMirrored)
-                } label: {
-                    Image(systemName: "arrow.left.and.right")
-                        .font(.system(size: 30))
-                        .foregroundColor(isMirrored ? .indigo : .gray)
-                }
-            }
-            
-            if huanCapture.currentCameraPosition == .back {
-                cameraTypeSwitchButtons
-            }
-        }
-    }
-    
-    private var cameraTypeSwitchButtons: some View {
-        VStack(spacing: 8) {
-            Text("相机类型")
-                .font(.caption)
-                .foregroundColor(.gray)
-            
-            HStack(spacing: 5) {
-                ForEach(huanCapture.availableBackCameraTypes, id: \.self) { cameraType in
-                    cameraTypeButton(for: cameraType)
-                }
-                
-                Button {
-                    huanCapture.switchBackCameraType()
-                } label: {
-                    VStack(spacing: 3) {
-                        Image(systemName: "arrow.triangle.2.circlepath")
-                            .font(.system(size: 16))
-                        
-                        Text("切换")
-                            .font(.system(size: 10, weight: .medium))
-                    }
-                    .frame(width: 40, height: 40)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.blue.opacity(0.15))
-                    )
-                }
-                .buttonStyle(BorderlessButtonStyle())
-            }
-        }
-        .padding(.vertical, 8)
-        .transition(.opacity)
-        .animation(.easeInOut, value: huanCapture.currentCameraPosition)
-        .animation(.easeInOut, value: huanCapture.currentCameraType)
-    }
-    
-    private func cameraTypeButton(for cameraType: CameraType) -> some View {
-        Button {
-            huanCapture.switchToBackCameraType(cameraType)
-        } label: {
-            VStack(spacing: 3) {
-                Image(systemName: cameraType == .wideAngle ? "camera.aperture" : 
-                                 (cameraType == .telephoto ? "camera.circle" : "camera.metering.center.weighted"))
-                    .font(.system(size: 16))
-                
-                Text(cameraType == .wideAngle ? "广角" : 
-                     (cameraType == .telephoto ? "长焦" : "超广角"))
-                    .font(.system(size: 10, weight: .medium))
-            }
-            .frame(width: 40, height: 40)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(huanCapture.currentCameraType == cameraType ? 
-                          Color.blue.opacity(0.2) : Color.gray.opacity(0.1))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(huanCapture.currentCameraType == cameraType ? 
-                            Color.blue : Color.clear, lineWidth: 1.5)
-            )
-        }
-        .buttonStyle(BorderlessButtonStyle())
-    }
-    
-    private var signalingInfoView: some View {
-        GroupBox {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    if !localSDPString.isEmpty {
-                        Text("本地 SDP").font(.headline).foregroundColor(.blue)
-                        Text(localSDPString)
-                            .font(.system(.caption, design: .monospaced))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(8)
-                            .background(Color.blue.opacity(0.05))
-                            .cornerRadius(8)
-                    }
+                statusBar
+                    .padding(.top, 5)
+                    .padding(.horizontal)
                     
-                    if !iceCandidatesString.isEmpty {
-                        Divider().padding(.vertical, 4)
-                        Text("ICE 候选者").font(.headline).foregroundColor(.blue)
-                        Text(iceCandidatesString)
-                            .font(.system(.caption, design: .monospaced))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(8)
-                            .background(Color.blue.opacity(0.05))
-                            .cornerRadius(8)
-                    }
-                }
-                .padding(4)
+                Spacer()
+                
+                bottomControls
+                    .padding(.bottom, 10)
+                    .padding(.horizontal)
             }
-            .frame(height: deviceOrientation.isPortrait ? 160 : 150)
-        } label: {
-            Label("信令信息", systemImage: "network")
-                .font(.headline)
-                .foregroundColor(.secondary)
+        }
+        .statusBar(hidden: true)
+        .task { 
+            log(.info, "视图已加载")
+            setupDeviceOrientationHandling()
+            captureManager.setPreviewMirrored(isMirrored)
+        }
+        .onDisappear { 
+            log(.info, "视图已消失，停止推流")
+            captureManager.stopStreaming() 
+        }
+        .sheet(isPresented: $showControls) { 
+            ControlsSheetView(captureManager: captureManager, 
+                              isMirrored: $isMirrored, 
+                              logMessages: $logMessages, 
+                              webSocketPort: config.enableWebSocketSignaling ? config.webSocketPort : nil)
+        }
+        .onReceive(captureManager.$connectionState) { newState in
+            log(.info, "WebRTC 状态: \(newState.chineseDescription)")
+        }
+        .onReceive(captureManager.$webSocketStatus) { newState in
+            if captureManager.isWebSocketSignalingEnabled {
+                log(.info, "WebSocket 状态: \(newState.chineseDescription)")
+            }
+        }
+        .onReceive(captureManager.$captureError) { error in
+            if let error = error {
+                log(.error, "错误: \(error.localizedDescription)")
+            }
+        }
+        .onReceive(captureManager.$currentCameraPosition) { position in
+            log(.info, "摄像头: \(position.localizedName)")
+        }
+        .onReceive(captureManager.$currentCameraType) { type in
+             log(.info, "类型: \(type.localizedName)")
         }
     }
 
-    private func toggleStreaming() {
-        isStreaming.toggle()
-        if isStreaming {
-            huanCapture.startStreaming()
-            logger.info("开始推流")
-        } else {
-            huanCapture.stopStreaming()
-            statusText = "准备就绪"
-            logger.info("停止推流")
-        }
-    }
-    
-    private func updateStatus(for state: RTCIceConnectionState) {
-        switch state {
-        case .new, .checking:
-            statusText = "正在连接..."
-        case .connected, .completed:
-            statusText = "已连接"
-        case .disconnected:
-            statusText = "已断开连接"
-        case .failed:
-            statusText = "连接失败"
-        case .closed:
-            statusText = "连接关闭"
-        case .count:
-            statusText = "Count (未知状态)"
-        @unknown default:
-            statusText = "未知连接状态"
-        }
-        
-        logger.info("WebRTC连接状态更新为: \(statusText)")
-    }
-    
-    private func handleLocalSDP(_ sdp: RTCSessionDescription?) {
-        guard let sdp = sdp else { return }
-        
-        let sdpType = sdp.type == .offer ? "Offer" : "Answer"
-        localSDPString = "类型: \(sdpType)\n\(sdp.sdp)"
-        logger.debug("获取到本地SDP: \(sdpType)")
-    }
-    
-    private func setupOrientationNotification() {
-        deviceOrientation = UIDevice.current.orientation.isValidInterfaceOrientation ? UIDevice.current.orientation : .portrait
-        huanCapture.deviceOrientation = deviceOrientation
-        
-        UIDevice.current.beginGeneratingDeviceOrientationNotifications()
-        
-        NotificationCenter.default.addObserver(forName: UIDevice.orientationDidChangeNotification, object: nil, queue: .main) {  _ in
-            let newOrientation = UIDevice.current.orientation
+    private var statusBar: some View {
+        HStack {
+            statusIndicator(color: captureManager.connectionState.color, 
+                              label: "WebRTC:\(captureManager.connectionState.chineseDescription)")
             
-            if newOrientation.isValidInterfaceOrientation {
-                self.deviceOrientation = newOrientation
-                self.huanCapture.deviceOrientation = newOrientation
-                self.logger.info("设备方向已更新为: \(newOrientation.rawValue)")
+            if captureManager.isWebSocketSignalingEnabled {
+                statusIndicator(color: captureManager.webSocketStatus.color, 
+                                label: "ws:\(captureManager.webSocketStatus.chineseDescription)")
             }
+            
+            Spacer()
+                
         }
+        .padding(.vertical, 5)
     }
     
-    private func handleICECandidate(_ candidate: RTCIceCandidate) {
-        receivedCandidates.append(candidate)
-        
-        if !receivedCandidates.isEmpty {
-            var candidatesText = ""
-            for (index, candidate) in receivedCandidates.enumerated() {
-                candidatesText.append("#\(index+1): \(candidate.sdp)\n")
-            }
-            iceCandidatesString = candidatesText
+    private func statusIndicator(color: Color, label: String) -> some View {
+        HStack(spacing: 5) {
+            Circle()
+                .fill(color)
+                .frame(width: 10, height: 10)
+                .overlay(Circle().stroke(Color.black.opacity(0.2), lineWidth: 0.5))
+                .shadow(radius: 1)
+            Text(label)
+                .font(.caption.weight(.medium))
+                .foregroundColor(.white)
+                .shadow(color: .black.opacity(0.7), radius: 2, x: 0, y: 1)
+                .lineLimit(1)
         }
+         .padding(.horizontal, 8)
+         .padding(.vertical, 4)
+         .background(.ultraThinMaterial, in: Capsule())
+    }
+    
+    private var bottomControls: some View {
+        HStack {
+            startStopButton
+            Spacer()
+            controlsButton
+        }
+        .padding(.vertical, 10)
+    }
+
+    private var startStopButton: some View {
+        Button {
+            let isIdleOrDisconnected = captureManager.connectionState.isIdleOrDisconnected
+            if isIdleOrDisconnected {
+                log(.info, "请求开始推流")
+                captureManager.startStreaming()
+            } else {
+                log(.info, "请求停止推流")
+                captureManager.stopStreaming()
+            }
+        } label: {
+            let isRunning = !captureManager.connectionState.isIdleOrDisconnected
+            
+            Image(systemName: isRunning ? "stop.circle.fill" : "play.circle.fill")
+                .font(.system(size: 50)) 
+                .symbolRenderingMode(.palette)
+                .foregroundStyle(.white, isRunning ? .red : .green)
+                .shadow(color: .black.opacity(0.5), radius: 3, x: 0, y: 2)
+        }
+        .padding(.leading) 
+    }
+
+    private var controlsButton: some View {
+        Button {
+            showControls = true
+        } label: {
+            Image(systemName: "slider.horizontal.3") 
+                .font(.system(size: 30))
+                .foregroundColor(.white)
+                .padding(10)
+                .background(Color.black.opacity(0.4), in: Circle())
+                .shadow(radius: 3)
+        }
+        .padding(.trailing)
+    }
+
+    private func log(_ level: LogEntry.LogLevel, _ message: String) {
+        let newEntry = LogEntry(message: message, level: level)
+        logMessages.append(newEntry)
+        if logMessages.count > maxLogEntries {
+            logMessages.removeFirst(logMessages.count - maxLogEntries)
+        }
+        print("[\(level)] \(message)") 
+    }
+
+    private func setupDeviceOrientationHandling() {
+        captureManager.deviceOrientation = UIDevice.current.orientation
         
-        logger.debug("新ICE候选: \(candidate.sdp)")
+        NotificationCenter.default.addObserver(forName: UIDevice.orientationDidChangeNotification, object: nil, queue: .main) { _ in
+            let newOrientation = UIDevice.current.orientation
+            if newOrientation.isPortrait || newOrientation.isLandscape {
+                captureManager.deviceOrientation = newOrientation
+            }
+        }
+        UIDevice.current.beginGeneratingDeviceOrientationNotifications()
     }
 }
 
-#Preview {
-    ContentView()
+struct ControlsSheetView: View {
+    @ObservedObject var captureManager: HuanCaptureManager
+    @Binding var isMirrored: Bool
+    @Binding var logMessages: [LogEntry]
+    let webSocketPort: UInt16?
+    
+    @Environment(\.dismiss) var dismissSheet
+    @State private var selectedCameraType: CameraType
+    
+    init(captureManager: HuanCaptureManager, isMirrored: Binding<Bool>, logMessages: Binding<[LogEntry]>, webSocketPort: UInt16?) {
+        self.captureManager = captureManager
+        self._isMirrored = isMirrored
+        self._logMessages = logMessages
+        self.webSocketPort = webSocketPort
+        _selectedCameraType = State(initialValue: captureManager.currentCameraType)
+    }
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 0) { 
+                List {
+                    if let port = webSocketPort {
+                        Section("WebSocket 服务器") {
+                            HStack {
+                                Image(systemName: "network")
+                                Text("监听端口: \(port.description)")
+                            }.foregroundColor(.secondary)
+                        }
+                    }
+                    
+                    Section("摄像头控制") {
+                        HStack {
+                            Label("切换摄像头", systemImage: "arrow.triangle.2.circlepath.camera")
+                            Spacer()
+                            Button("切换") { captureManager.switchCamera() }.buttonStyle(.borderless)
+                        }
+                        
+                        let showTypeSwitch = captureManager.availableBackCameraTypes.count > 1 && captureManager.currentCameraPosition == .back
+                        if showTypeSwitch {
+                            VStack(alignment: .leading) {
+                                Text("相机类型")  
+                                cameraTypePicker
+                            } .padding(.vertical, 4)  
+                        } else {
+                            HStack {
+                                Text("相机类型")
+                                Spacer()
+                                Text("\(captureManager.currentCameraType.localizedName)")
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                    }
+                    
+                    Section("预览设置") {
+                        Toggle("镜像预览", isOn: $isMirrored)
+                            .onChange(of: isMirrored) { oldValue, newValue in
+                                captureManager.setPreviewMirrored(newValue)
+                            }
+                    }
+                }
+                .listStyle(.insetGrouped)
+                
+                logView
+                    .frame(height: 180)  
+                    .background(Color(.systemGray6))
+                    .clipShape(RoundedCorner(radius: 10, corners: [.bottomLeft, .bottomRight]))
+            }
+            .navigationTitle("控制与日志")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("完成") { dismissSheet() }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large]) 
+    }
+    
+    @ViewBuilder
+    private var cameraTypePicker: some View {
+        Picker("相机类型", selection: $selectedCameraType) { 
+            ForEach(captureManager.availableBackCameraTypes, id: \.self) { type in
+                Text(type.localizedName).tag(type)
+            }
+        }
+        .labelsHidden()  
+        .pickerStyle(.segmented) 
+        .onChange(of: selectedCameraType) { oldValue, newValue in
+            captureManager.switchToBackCameraType(newValue)
+        }
+        .onReceive(captureManager.$currentCameraType) { managerType in
+            if selectedCameraType != managerType {
+                selectedCameraType = managerType
+            }
+        }
+    }
+    
+    private var logView: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text("实时日志")
+                    .font(.headline)
+                    .padding(.leading)
+                Spacer()
+            }
+            .padding(.top, 10)
+            .padding(.bottom, 5)
+                
+            Divider().padding(.horizontal)
+            
+            ScrollViewReader { proxy in
+                ScrollView(.vertical, showsIndicators: false) {
+                    LazyVStack(alignment: .leading, spacing: 6) {
+                        ForEach(logMessages) { entry in
+                            logEntryView(entry)
+                                .id(entry.id)
+                        }
+                    }
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
+                }
+                .onChange(of: logMessages.count) {
+                    if let lastId = logMessages.last?.id {
+                        withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(lastId, anchor: .bottom) }
+                    }
+                }
+            }
+        }
+    }
+    
+    private func logEntryView(_ entry: LogEntry) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Text(entry.formattedTimestamp)
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundColor(.gray)
+                .frame(width: 65, alignment: .leading)
+            Text(entry.message)
+                .font(.system(size: 12))
+                .foregroundColor(logColor(for: entry.level))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .lineLimit(3)  
+        }
+    }
+    
+    private func logColor(for level: LogEntry.LogLevel) -> Color {
+        switch level {
+            case .info: return .primary
+            case .warning: return .orange
+            case .error: return .red
+        }
+    }
+}
+
+struct HuanCapturePreview: UIViewRepresentable { 
+    let captureManager: HuanCaptureManager
+
+    func makeUIView(context: Context) -> UIView {
+        return captureManager.previewView
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) { }
+}
+
+extension AVCaptureDevice.Position {
+    var localizedName: String { 
+        switch self {
+        case .back: return "后置摄像头"
+        case .front: return "前置摄像头"
+        case .unspecified: return "未指定"
+        @unknown default: return "未知"
+        }
+    }
+    var shortName: String { 
+        switch self {
+        case .back: return "Back"
+        case .front: return "Front"
+        case .unspecified: return "Unspec."
+        @unknown default: return "Unk."
+        }
+    }
+}
+
+extension CameraType {
+    var localizedName: String { 
+        switch self {
+        case .wideAngle: return "广角"
+        case .telephoto: return "长焦"
+        case .ultraWide: return "超广角"
+        }
+    }
+    var shortName: String {
+        switch self {
+        case .wideAngle: return "Wide"
+        case .telephoto: return "Tele"
+        case .ultraWide: return "Ultra"
+        }
+    }
+}
+
+extension PublicWebSocketStatus {
+    var chineseDescription: String {
+        switch self {
+        case .idle: return "空闲"
+        case .starting: return "启动中..."
+        case .listening(let port): return "监听端口: \(port)"
+        case .stopped: return "已停止"
+        case .failed(let reason): return "失败: \(reason)"
+        case .clientConnected: return "客户端已连接"
+        case .clientDisconnected: return "客户端断开"
+        }
+    }
+    var color: Color {
+        switch self {
+        case .idle, .stopped, .clientDisconnected: return .gray
+        case .starting: return .orange
+        case .listening, .clientConnected: return .green
+        case .failed: return .red
+        @unknown default:
+            return .gray  
+        }
+    }
+}
+
+extension RTCIceConnectionState {
+    var chineseDescription: String {
+        switch self {
+        case .new: return "新建"
+        case .checking: return "检查中"
+        case .connected: return "已连接"
+        case .completed: return "已完成"
+        case .disconnected: return "已断开"
+        case .failed: return "连接失败"
+        case .closed: return "已关闭"
+        @unknown default: return "未知"
+        }
+    }
+    
+    var color: Color {
+        switch self {
+        case .new, .checking: return .orange
+        case .connected, .completed: return .green
+        case .disconnected: return .yellow
+        case .failed, .closed: return .red
+        @unknown default:
+            return .gray  
+        }
+    }
+}
+
+extension RTCIceConnectionState {
+    var isIdleOrDisconnected: Bool {
+        switch self {
+        case .new, .disconnected, .failed, .closed: return true
+        default: return false
+        }
+    }
+}
+
+struct RoundedCorner: Shape {
+    var radius: CGFloat = .infinity
+    var corners: UIRectCorner = .allCorners
+
+    func path(in rect: CGRect) -> Path {
+        let path = UIBezierPath(roundedRect: rect, byRoundingCorners: corners, cornerRadii: CGSize(width: radius, height: radius))
+        return Path(path.cgPath)
+    }
 }

@@ -1,13 +1,15 @@
 # HuanCapture
 
-HuanCapture是一个为macOS/iOS设计的Swift视频捕获和WebRTC集成库，特别适合与SwiftUI搭配使用。
+HuanCapture是一个为macOS/iOS设计的Swift视频捕获和WebRTC集成库，特别适合与SwiftUI搭配使用。它提供了简单的API来捕获和流式传输高质量视频，并内置了WebRTC信令服务器。
 
 ## 演示截图
 
 <div align="center">
-  <img src="demo1.PNG" width="70%" alt="Demo 1">
+  <img src="demo1.PNG" width="45%" alt="Demo 1">
+  <img src="demo2.PNG" width="45%" alt="Demo 2">
   <br><br>
-  <img src="demo2.PNG" width="70%" alt="Demo 2">
+  <img src="demo3.PNG" width="45%" alt="Demo 3">
+  <img src="demo4.png" width="45%" alt="Demo 4">
 </div>
 
 ## 功能特点
@@ -300,6 +302,81 @@ captureManager.$captureError
 
 在Demo目录中提供了一个完整的示例应用，展示了如何在SwiftUI应用中使用HuanCapture库。查看`Demo/ContentView.swift`以获取更多灵感。
 
+## HuanCapture WebRTC Viewer 部署指南
+
+HuanCapture 内置了 WebSocket 信令服务器，但您需要一个 Web 客户端来接收和显示视频流。以下是部署 HuanCapture WebRTC Viewer 的步骤：
+
+### 1. 准备 Web 客户端文件
+
+在 `Play` 目录中已经包含了一个完整的 WebRTC Viewer 实现，包括以下文件：
+
+- `index.html` - 网页界面
+- `main.js` - WebRTC 客户端逻辑
+- `styles.css` - 样式表
+- `server.js` - 简单的 Web 服务器
+
+### 2. 安装依赖
+
+确保您已安装 Node.js，然后在 `Play` 目录中运行：
+
+```bash
+npm install
+```
+
+这将安装所需的依赖项（express、cors 等）。
+
+### 3. 启动 Web 服务器
+
+在 `Play` 目录中运行：
+
+```bash
+npm start
+```
+
+或者直接运行：
+
+```bash
+node server.js
+```
+
+服务器将在 http://localhost:3000 上启动。
+
+### 4. 配置 iOS/macOS 应用
+
+在您的 iOS 或 macOS 应用中，确保 HuanCaptureManager 配置了正确的 WebSocket 端口：
+
+```swift
+let config = HuanCaptureConfig(
+    enableWebSocketSignaling: true,
+    webSocketPort: 8080,  // 默认端口，确保与 Web 客户端匹配
+    isLoggingEnabled: true
+)
+
+let captureManager = HuanCaptureManager(config: config)
+```
+
+### 5. 连接 Web 客户端
+
+1. 在浏览器中打开 http://localhost:3000
+2. 在 WebSocket 地址输入框中输入：`ws://[您的设备IP地址]:8080`
+3. 点击"连接"按钮
+
+如果一切配置正确，Web 客户端将连接到您的 iOS/macOS 应用，并开始接收视频流。
+
+### 6. 网络注意事项
+
+- 确保您的 iOS/macOS 设备和运行 Web 客户端的计算机在同一网络中
+- 如果使用防火墙，确保允许 WebSocket 端口（默认 8080）的通信
+- 对于公共网络或互联网访问，您可能需要配置 NAT 穿透或使用 TURN 服务器
+
+### 7. 自定义 Web 客户端
+
+您可以根据需要自定义 Web 客户端的外观和功能：
+
+- 修改 `styles.css` 更改界面样式
+- 编辑 `index.html` 调整布局
+- 在 `main.js` 中添加更多功能，如录制、截图等
+
 ## 注意事项
 
 1. 确保在Info.plist中添加相机使用权限：
@@ -308,7 +385,9 @@ captureManager.$captureError
 
 2. WebRTC依赖于网络连接，建议在良好的网络环境中使用。
 
-3. 对于生产环境，您需要实现一个可靠的信令服务器来处理WebRTC的信令交换。
+3. 默认配置适用于局域网环境。对于公共网络或互联网访问，您需要配置 STUN/TURN 服务器。
+
+4. 在生产环境中，建议使用 HTTPS 和 WSS（WebSocket Secure）以确保通信安全。
 
 ## 许可证
 

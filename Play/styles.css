@@ -1,0 +1,182 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    background-color: #f4f4f8;
+    color: #333;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 15px;
+}
+
+.container {
+    background-color: #fff;
+    padding: 20px 30px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 700px; /* Adjust max-width as needed */
+    display: flex;
+    flex-direction: column;
+}
+
+header h1 {
+    text-align: center;
+    color: #4a4a4a;
+    margin-bottom: 20px;
+    font-weight: 600;
+}
+
+/* Settings Area */
+.settings {
+    display: flex;
+    flex-wrap: wrap; /* Allow wrapping on small screens */
+    gap: 10px; /* Spacing between elements */
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.settings label {
+    font-weight: 500;
+    margin-right: 5px;
+}
+
+.settings input[type="text"] {
+    flex-grow: 1; /* Allow input to take available space */
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 0.95em;
+    min-width: 150px; /* Minimum width */
+}
+
+.settings button {
+    padding: 8px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+}
+
+#connect-button {
+    background-color: #28a745; /* Green */
+    color: white;
+}
+#connect-button:hover:not(:disabled) {
+    background-color: #218838;
+}
+
+#disconnect-button {
+    background-color: #dc3545; /* Red */
+    color: white;
+}
+#disconnect-button:hover:not(:disabled) {
+    background-color: #c82333;
+}
+
+.settings button:disabled {
+    background-color: #e0e0e0;
+    color: #999;
+    cursor: not-allowed;
+}
+
+/* Status Area */
+.status-container {
+    display: flex;
+    justify-content: space-around; /* Space out status indicators */
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 20px;
+    padding: 10px;
+    background-color: #f9f9f9;
+    border-radius: 5px;
+}
+
+.status {
+    display: flex;
+    align-items: center;
+    font-size: 0.9em;
+}
+
+.status strong {
+    margin-right: 5px;
+    color: #555;
+}
+
+.status span {
+    font-weight: 500;
+    padding: 3px 8px;
+    border-radius: 3px;
+    background-color: #e9ecef;
+    color: #495057;
+    white-space: nowrap; /* Prevent wrapping */
+}
+
+/* Video Area */
+.video-container {
+    width: 100%;
+    /* Maintain aspect ratio (4:3 for VGA) - REMOVED */
+    /* max-width: 640px; */ /* Control max size */
+    /* aspect-ratio: 4 / 3; */ 
+    margin: 0 auto; /* Center the container */
+    background-color: #000;
+    position: relative;
+    overflow: hidden; /* Hide parts of video that overflow */
+    border-radius: 8px; /* Optional rounded corners */
+}
+
+#remote-video {
+    display: block; /* Remove extra space below video */
+    width: 100%;
+    /* height: 100%; - CHANGED */
+    height: auto; /* Allow height to adjust based on width and video aspect ratio */
+    object-fit: contain; /* Still useful if container has max-width/height */
+    background-color: #111; /* Dark background for letter/pillarboxing */
+}
+
+#no-video-message {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #aaa;
+    font-size: 1.1em;
+    text-align: center;
+    padding: 10px;
+    display: block; /* Initially visible, JS will hide */
+    z-index: 1;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 600px) {
+    .container {
+        padding: 15px;
+    }
+    header h1 {
+        font-size: 1.5em;
+    }
+    .settings {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .settings input[type="text"] {
+        width: 100%; 
+    }
+    .status-container {
+        justify-content: space-between;
+    }
+    .video-container {
+       /* Allow aspect ratio to adjust slightly on very small screens if needed */
+       /* aspect-ratio: auto; */
+    }
+}

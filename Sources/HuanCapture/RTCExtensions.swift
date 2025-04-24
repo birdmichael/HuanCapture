@@ -1,7 +1,7 @@
 import WebRTC
 
 public extension RTCIceConnectionState {
-    var description: String {
+    var descriptionString: String {
         switch self {
         case .new: return "New"
         case .checking: return "Checking"
@@ -17,7 +17,7 @@ public extension RTCIceConnectionState {
 }
 
 public extension RTCSignalingState {
-     var description: String {
+    var descriptionString: String {
         switch self {
         case .stable: return "Stable"
         case .haveLocalOffer: return "HaveLocalOffer"
@@ -31,7 +31,7 @@ public extension RTCSignalingState {
 }
 
 public extension RTCIceGatheringState {
-     var description: String {
+    var descriptionString: String {
         switch self {
         case .new: return "New"
         case .gathering: return "Gathering"
@@ -42,7 +42,7 @@ public extension RTCIceGatheringState {
 }
 
 public extension RTCDataChannelState {
-    var description: String {
+    var descriptionString: String {
         switch self {
         case .connecting: return "Connecting"
         case .open: return "Open"
@@ -54,18 +54,13 @@ public extension RTCDataChannelState {
 }
 
 public extension RTCRtpMediaType {
-    var description: String {
+    var descriptionString: String {
         switch self {
-        case .audio: 
-            return "Audio"
-        case .video: 
-            return "Video"
-        case .data:
-            return "data"
-        case .unsupported:
-            return "unsupported"
-        @unknown default:
-            return "Unknown (rawValue: \(self.rawValue))"
+        case .audio: return "Audio"
+        case .video: return "Video"
+        case .data: return "data"
+        case .unsupported: return "unsupported"
+        @unknown default: return "Unknown (rawValue: \(self.rawValue))"
         }
     }
-} 
+}
