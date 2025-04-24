@@ -1,8 +1,5 @@
 import WebRTC
 
-// 将 HuanCapture.swift 中的 Helper extensions 移到这里并设为 public
-
-// Helper extension for RTCIceConnectionState description
 public extension RTCIceConnectionState {
     var description: String {
         switch self {
@@ -19,7 +16,6 @@ public extension RTCIceConnectionState {
     }
 }
 
-// Helper extension for RTCSignalingState description
 public extension RTCSignalingState {
      var description: String {
         switch self {
@@ -34,7 +30,6 @@ public extension RTCSignalingState {
     }
 }
 
-// Helper extension for RTCIceGatheringState description
 public extension RTCIceGatheringState {
      var description: String {
         switch self {
@@ -46,7 +41,6 @@ public extension RTCIceGatheringState {
     }
 }
 
-// Helper extension for RTCDataChannelState description - not used here but good to have
 public extension RTCDataChannelState {
     var description: String {
         switch self {
@@ -59,7 +53,6 @@ public extension RTCDataChannelState {
     }
 }
 
-// Helper extension for RTCRtpMediaType description - potentially useful
 public extension RTCRtpMediaType {
     var description: String {
         switch self {

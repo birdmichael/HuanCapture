@@ -16,6 +16,7 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
     @Published public private(set) var localSDP: RTCSessionDescription?
     @Published public private(set) var captureError: Error?
     @Published public private(set) var currentCameraPosition: AVCaptureDevice.Position = .back
+    @Published public var deviceOrientation: UIDeviceOrientation = .portrait
     public let iceCandidateSubject = PassthroughSubject<RTCIceCandidate, Never>()
     public let previewView: UIView
 
@@ -436,14 +437,26 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
         let rtcPixelBuffer = RTCCVPixelBuffer(pixelBuffer: pixelBuffer)
 
         let rotation: RTCVideoRotation = {
-            switch self.currentCameraPosition {
-            case .front:
+            switch (self.currentCameraPosition, self.deviceOrientation) {
+            case (.front, .portrait):
                 return ._90
-            case .back:
-                return ._90
-            default:
-                if self.isLoggingEnabled { logger.warning("Camera position is not front or back (\(self.currentCameraPosition.rawValue)), using rotation 0.") }
+            case (.front, .portraitUpsideDown):
+                return ._270
+            case (.front, .landscapeLeft):
+                return ._180
+            case (.front, .landscapeRight):
                 return ._0
+            case (.back, .portrait):
+                return ._90
+            case (.back, .portraitUpsideDown):
+                return ._270
+            case (.back, .landscapeLeft):
+                return ._0
+            case (.back, .landscapeRight):
+                return ._180
+            default:
+                if self.isLoggingEnabled { logger.warning("Camera position is not front or back (\(self.currentCameraPosition.rawValue)) or unknown orientation (\(self.deviceOrientation.rawValue)), using default rotation.") }
+                return ._90
             }
         }()
 

@@ -3,6 +3,7 @@ import WebRTC
 import HuanCapture
 import OSLog
 import Combine
+import UIKit
 
 struct CapturePreviewRepresentable: UIViewRepresentable {
     let captureView: UIView
@@ -24,110 +25,19 @@ struct ContentView: View {
     @State private var localSDPString = ""
     @State private var iceCandidatesString = ""
     @State private var receivedCandidates: [RTCIceCandidate] = []
+    @State private var deviceOrientation: UIDeviceOrientation = .portrait
     
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "ContentView")
 
     var body: some View {
-        VStack(spacing: 18) {
-            Text("HuanCapture").font(.largeTitle).bold()
-                .foregroundColor(.blue)
-                .padding(.top, 12)
-            
-            ZStack {
-                CapturePreviewRepresentable(captureView: huanCapture.previewView)
-                    .frame(maxWidth: .infinity)
-                    .aspectRatio(3/4, contentMode: .fit)
-                    .background(Color.black.opacity(0.05))
-                    .cornerRadius(16)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16)
-                            .stroke(isStreaming ? Color.blue : Color.gray.opacity(0.3), lineWidth: isStreaming ? 3 : 1)
-                    )
-                    .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
-                    .animation(.easeInOut(duration: 0.3), value: isStreaming)
-                
-                VStack {
-                    Spacer()
-                    Text(statusText)
-                        .font(.footnote).bold()
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(Color.black.opacity(0.7))
-                        .foregroundColor(.white)
-                        .cornerRadius(20)
-                        .padding(.bottom, 12)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        Group {
+            if deviceOrientation == .portrait || deviceOrientation == .portraitUpsideDown {
+                verticalLayout
+            } else if deviceOrientation == .landscapeLeft || deviceOrientation == .landscapeRight {
+                horizontalLayout
+            } else {
+                verticalLayout
             }
-            .padding(.horizontal)
-            
-            HStack(spacing: 30) {
-                // 开始/停止按钮 - 仅使用图标
-                Button {
-                    toggleStreaming()
-                } label: {
-                    Image(systemName: isStreaming ? "stop.circle.fill" : "play.circle.fill")
-                        .font(.system(size: 36))
-                        .foregroundColor(isStreaming ? .red : .green)
-                }
-                
-                // 切换镜头按钮 - 仅使用图标
-                Button {
-                    huanCapture.switchCamera()
-                } label: {
-                    Image(systemName: "arrow.triangle.2.circlepath.camera")
-                        .font(.system(size: 30))
-                        .foregroundColor(.blue)
-                }
-                
-                // 镜像按钮 - 仅使用图标
-                Button {
-                    isMirrored.toggle()
-                    huanCapture.setPreviewMirrored(isMirrored)
-                } label: {
-                    Image(systemName: "arrow.left.and.right")
-                        .font(.system(size: 30))
-                        .foregroundColor(isMirrored ? .indigo : .gray)
-                }
-            }
-            .padding(.horizontal)
-            .padding(.vertical, 8)
-            
-            GroupBox {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 12) {
-                        if !localSDPString.isEmpty {
-                            Text("本地 SDP").font(.headline).foregroundColor(.blue)
-                            Text(localSDPString)
-                                .font(.system(.caption, design: .monospaced))
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(8)
-                                .background(Color.blue.opacity(0.05))
-                                .cornerRadius(8)
-                        }
-                        
-                        if !iceCandidatesString.isEmpty {
-                            Divider().padding(.vertical, 4)
-                            Text("ICE 候选者").font(.headline).foregroundColor(.blue)
-                            Text(iceCandidatesString)
-                                .font(.system(.caption, design: .monospaced))
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(8)
-                                .background(Color.blue.opacity(0.05))
-                                .cornerRadius(8)
-                        }
-                    }
-                    .padding(4)
-                }
-                .frame(height: 160)
-            } label: {
-                Label("信令信息", systemImage: "network")
-                    .font(.headline)
-                    .foregroundColor(.secondary)
-            }
-            .padding(.horizontal)
-            
-            Spacer()
         }
         .onReceive(huanCapture.$connectionState) { newState in
             updateStatus(for: newState)
@@ -150,6 +60,7 @@ struct ContentView: View {
         .onAppear {
             isMirrored = false
             huanCapture.setPreviewMirrored(isMirrored)
+            setupOrientationNotification()
             logger.info("ContentView appeared, initial mirror state set to false")
         }
         .onDisappear {
@@ -157,6 +68,147 @@ struct ContentView: View {
                 huanCapture.stopStreaming()
                 logger.info("ContentView disappeared, stopped streaming.")
             }
+            NotificationCenter.default.removeObserver(NotificationCenter.default.self, name: UIDevice.orientationDidChangeNotification, object: nil)
+        }
+    }
+    
+    private var verticalLayout: some View {
+        VStack(spacing: 18) {
+            Text("HuanCapture").font(.largeTitle).bold()
+                .foregroundColor(.blue)
+                .padding(.top, 12)
+            
+            previewView
+                .padding(.horizontal)
+            
+            controlButtons
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+            
+            signalingInfoView
+                .padding(.horizontal)
+            
+            Spacer()
+        }
+    }
+    
+    private var horizontalLayout: some View {
+        HStack(spacing: 18) {
+            VStack {
+                Text("HuanCapture").font(.title2).bold()
+                    .foregroundColor(.blue)
+                    .padding(.top, 8)
+                
+                previewView
+                    .padding(.horizontal, 8)
+                
+                Spacer()
+            }
+            .frame(width: UIScreen.main.bounds.width * 0.6)
+            
+            VStack(spacing: 16) {
+                controlButtons
+                    .padding(.top, 12)
+                
+                signalingInfoView
+                
+                Spacer()
+            }
+            .padding(.horizontal, 8)
+            .frame(width: UIScreen.main.bounds.width * 0.4)
+        }
+    }
+    
+    private var previewView: some View {
+        ZStack {
+            CapturePreviewRepresentable(captureView: huanCapture.previewView)
+                .frame(maxWidth: .infinity)
+                .aspectRatio(deviceOrientation.isPortrait ? 3/4 : 4/3, contentMode: .fit)
+                .background(Color.black.opacity(0.05))
+                .cornerRadius(16)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(isStreaming ? Color.blue : Color.gray.opacity(0.3), lineWidth: isStreaming ? 3 : 1)
+                )
+                .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+                .animation(.easeInOut(duration: 0.3), value: isStreaming)
+            
+            VStack {
+                Spacer()
+                Text(statusText)
+                    .font(.footnote).bold()
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.black.opacity(0.7))
+                    .foregroundColor(.white)
+                    .cornerRadius(20)
+                    .padding(.bottom, 12)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+    
+    private var controlButtons: some View {
+        HStack(spacing: 30) {
+            Button {
+                toggleStreaming()
+            } label: {
+                Image(systemName: isStreaming ? "stop.circle.fill" : "play.circle.fill")
+                    .font(.system(size: 36))
+                    .foregroundColor(isStreaming ? .red : .green)
+            }
+            
+            Button {
+                huanCapture.switchCamera()
+            } label: {
+                Image(systemName: "arrow.triangle.2.circlepath.camera")
+                    .font(.system(size: 30))
+                    .foregroundColor(.blue)
+            }
+            
+            Button {
+                isMirrored.toggle()
+                huanCapture.setPreviewMirrored(isMirrored)
+            } label: {
+                Image(systemName: "arrow.left.and.right")
+                    .font(.system(size: 30))
+                    .foregroundColor(isMirrored ? .indigo : .gray)
+            }
+        }
+    }
+    
+    private var signalingInfoView: some View {
+        GroupBox {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    if !localSDPString.isEmpty {
+                        Text("本地 SDP").font(.headline).foregroundColor(.blue)
+                        Text(localSDPString)
+                            .font(.system(.caption, design: .monospaced))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(8)
+                            .background(Color.blue.opacity(0.05))
+                            .cornerRadius(8)
+                    }
+                    
+                    if !iceCandidatesString.isEmpty {
+                        Divider().padding(.vertical, 4)
+                        Text("ICE 候选者").font(.headline).foregroundColor(.blue)
+                        Text(iceCandidatesString)
+                            .font(.system(.caption, design: .monospaced))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(8)
+                            .background(Color.blue.opacity(0.05))
+                            .cornerRadius(8)
+                    }
+                }
+                .padding(4)
+            }
+            .frame(height: deviceOrientation.isPortrait ? 160 : 200)
+        } label: {
+            Label("信令信息", systemImage: "network")
+                .font(.headline)
+                .foregroundColor(.secondary)
         }
     }
 
@@ -199,6 +251,23 @@ struct ContentView: View {
         let sdpType = sdp.type == .offer ? "Offer" : "Answer"
         localSDPString = "类型: \(sdpType)\n\(sdp.sdp)"
         logger.debug("获取到本地SDP: \(sdpType)")
+    }
+    
+    private func setupOrientationNotification() {
+        deviceOrientation = UIDevice.current.orientation.isValidInterfaceOrientation ? UIDevice.current.orientation : .portrait
+        huanCapture.deviceOrientation = deviceOrientation
+        
+        UIDevice.current.beginGeneratingDeviceOrientationNotifications()
+        
+        NotificationCenter.default.addObserver(forName: UIDevice.orientationDidChangeNotification, object: nil, queue: .main) {  _ in
+            let newOrientation = UIDevice.current.orientation
+            
+            if newOrientation.isValidInterfaceOrientation {
+                self.deviceOrientation = newOrientation
+                self.huanCapture.deviceOrientation = newOrientation
+                self.logger.info("设备方向已更新为: \(newOrientation.rawValue)")
+            }
+        }
     }
     
     private func handleICECandidate(_ candidate: RTCIceCandidate) {

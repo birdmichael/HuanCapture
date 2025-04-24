@@ -11,6 +11,7 @@
 		802A2A502DB9256E00F88F2A /* HuanCapture in Frameworks */ = {isa = PBXBuildFile; productRef = 802A2A4F2DB9256E00F88F2A /* HuanCapture */; };
 		802A2A582DB9265D00F88F2A /* HuanCapture in Frameworks */ = {isa = PBXBuildFile; productRef = 802A2A572DB9265D00F88F2A /* HuanCapture */; };
 		802A2A5B2DB926CF00F88F2A /* HuanCapture in Frameworks */ = {isa = PBXBuildFile; productRef = 802A2A5A2DB926CF00F88F2A /* HuanCapture */; };
+		802A2A6A2DBA0CF700F88F2A /* HuanCapture in Frameworks */ = {isa = PBXBuildFile; productRef = 802A2A692DBA0CF700F88F2A /* HuanCapture */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -30,6 +31,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				802A2A6A2DBA0CF700F88F2A /* HuanCapture in Frameworks */,
 				802A2A4C2DB924FD00F88F2A /* HuanCapture in Frameworks */,
 				802A2A582DB9265D00F88F2A /* HuanCapture in Frameworks */,
 				802A2A502DB9256E00F88F2A /* HuanCapture in Frameworks */,
@@ -88,6 +90,7 @@
 				802A2A4F2DB9256E00F88F2A /* HuanCapture */,
 				802A2A572DB9265D00F88F2A /* HuanCapture */,
 				802A2A5A2DB926CF00F88F2A /* HuanCapture */,
+				802A2A692DBA0CF700F88F2A /* HuanCapture */,
 			);
 			productName = Demo;
 			productReference = 805E14D62DB7F652004CF67D /* Demo.app */;
@@ -118,7 +121,7 @@
 			mainGroup = 805E14BE2DB7F630004CF67D;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				802A2A592DB926CF00F88F2A /* XCLocalSwiftPackageReference "../HuanCaptureSPM" */,
+				802A2A682DBA0CF700F88F2A /* XCLocalSwiftPackageReference "../HuanCapture" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 805E14C92DB7F630004CF67D /* Products */;
@@ -360,9 +363,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		802A2A592DB926CF00F88F2A /* XCLocalSwiftPackageReference "../HuanCaptureSPM" */ = {
+		802A2A682DBA0CF700F88F2A /* XCLocalSwiftPackageReference "../HuanCapture" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../HuanCaptureSPM;
+			relativePath = ../HuanCapture;
 		};
 /* End XCLocalSwiftPackageReference section */
 
@@ -380,6 +383,10 @@
 			productName = HuanCapture;
 		};
 		802A2A5A2DB926CF00F88F2A /* HuanCapture */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = HuanCapture;
+		};
+		802A2A692DBA0CF700F88F2A /* HuanCapture */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = HuanCapture;
 		};
