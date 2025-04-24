@@ -185,6 +185,10 @@ struct ContentView: View {
     }
     
     private var controlButtons: some View {
+        controlButtonsContent
+    }
+    
+    private var controlButtonsContent: some View {
         VStack(spacing: 20) {
             HStack(spacing: 30) {
                 Button {
@@ -214,65 +218,73 @@ struct ContentView: View {
             }
             
             if huanCapture.currentCameraPosition == .back {
-                VStack(spacing: 8) {
-                    Text("相机类型")
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                    
-                    HStack(spacing: 5) {
-                        ForEach(huanCapture.availableBackCameraTypes, id: \.self) { cameraType in
-                            Button {
-                                huanCapture.switchToBackCameraType(cameraType)
-                            } label: {
-                                VStack(spacing: 3) {
-                                    Image(systemName: cameraType == .wideAngle ? "camera.aperture" : 
-                                                     (cameraType == .telephoto ? "camera.circle" : "camera.metering.center.weighted"))
-                                        .font(.system(size: 16))
-                                    
-                                    Text(cameraType == .wideAngle ? "广角" : 
-                                         (cameraType == .telephoto ? "长焦" : "超广角"))
-                                        .font(.system(size: 10, weight: .medium))
-                                }
-                                .frame(width: 40, height: 40)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(huanCapture.currentCameraType == cameraType ? 
-                                              Color.blue.opacity(0.2) : Color.gray.opacity(0.1))
-                                )
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(huanCapture.currentCameraType == cameraType ? 
-                                                Color.blue : Color.clear, lineWidth: 1.5)
-                                )
-                            }
-                            .buttonStyle(BorderlessButtonStyle())
-                        }
-                        
-                        Button {
-                            huanCapture.switchBackCameraType()
-                        } label: {
-                            VStack(spacing: 3) {
-                                Image(systemName: "arrow.triangle.2.circlepath")
-                                    .font(.system(size: 16))
-                                
-                                Text("切换")
-                                    .font(.system(size: 10, weight: .medium))
-                            }
-                            .frame(width: 40, height: 40)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(Color.blue.opacity(0.15))
-                            )
-                        }
-                        .buttonStyle(BorderlessButtonStyle())
-                    }
-                }
-                .padding(.vertical, 8)
-                .transition(.opacity)
-                .animation(.easeInOut, value: huanCapture.currentCameraPosition)
-                .animation(.easeInOut, value: huanCapture.currentCameraType)
+                cameraTypeSwitchButtons
             }
         }
+    }
+    
+    private var cameraTypeSwitchButtons: some View {
+        VStack(spacing: 8) {
+            Text("相机类型")
+                .font(.caption)
+                .foregroundColor(.gray)
+            
+            HStack(spacing: 5) {
+                ForEach(huanCapture.availableBackCameraTypes, id: \.self) { cameraType in
+                    cameraTypeButton(for: cameraType)
+                }
+                
+                Button {
+                    huanCapture.switchBackCameraType()
+                } label: {
+                    VStack(spacing: 3) {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .font(.system(size: 16))
+                        
+                        Text("切换")
+                            .font(.system(size: 10, weight: .medium))
+                    }
+                    .frame(width: 40, height: 40)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color.blue.opacity(0.15))
+                    )
+                }
+                .buttonStyle(BorderlessButtonStyle())
+            }
+        }
+        .padding(.vertical, 8)
+        .transition(.opacity)
+        .animation(.easeInOut, value: huanCapture.currentCameraPosition)
+        .animation(.easeInOut, value: huanCapture.currentCameraType)
+    }
+    
+    private func cameraTypeButton(for cameraType: CameraType) -> some View {
+        Button {
+            huanCapture.switchToBackCameraType(cameraType)
+        } label: {
+            VStack(spacing: 3) {
+                Image(systemName: cameraType == .wideAngle ? "camera.aperture" : 
+                                 (cameraType == .telephoto ? "camera.circle" : "camera.metering.center.weighted"))
+                    .font(.system(size: 16))
+                
+                Text(cameraType == .wideAngle ? "广角" : 
+                     (cameraType == .telephoto ? "长焦" : "超广角"))
+                    .font(.system(size: 10, weight: .medium))
+            }
+            .frame(width: 40, height: 40)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(huanCapture.currentCameraType == cameraType ? 
+                          Color.blue.opacity(0.2) : Color.gray.opacity(0.1))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(huanCapture.currentCameraType == cameraType ? 
+                            Color.blue : Color.clear, lineWidth: 1.5)
+            )
+        }
+        .buttonStyle(BorderlessButtonStyle())
     }
     
     private var signalingInfoView: some View {
