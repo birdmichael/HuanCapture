@@ -389,6 +389,3 @@ let captureManager = HuanCaptureManager(config: config)
 
 4. 在生产环境中，建议使用 HTTPS 和 WSS（WebSocket Secure）以确保通信安全。
 
-## 许可证
-
-[此处添加您的许可证信息]
