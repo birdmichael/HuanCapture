@@ -2,6 +2,13 @@
 
 HuanCapture是一个为macOS/iOS设计的Swift视频捕获和WebRTC集成库，特别适合与SwiftUI搭配使用。
 
+## 演示截图
+
+<div align="center">
+  <img src="demo1.PNG" width="45%" alt="Demo 1">
+  <img src="demo2.PNG" width="45%" alt="Demo 2">
+</div>
+
 ## 功能特点
 
 - 简单易用的视频捕获和WebRTC集成
