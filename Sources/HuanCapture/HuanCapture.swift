@@ -10,11 +10,34 @@ import OSLog
 import Combine
 import SwiftUI
 
-public enum CameraType {
+#if canImport(es_cast_client_ios)
+import es_cast_client_ios
+#endif
+
+public enum CameraType: RawRepresentable { // Ensure RawRepresentable conformance here or in the extension
+    public typealias RawValue = String
+
     case wideAngle
     case telephoto
     case ultraWide
-    
+
+    public init?(rawValue: RawValue) {
+        switch rawValue {
+        case "wideAngle": self = .wideAngle
+        case "telephoto": self = .telephoto
+        case "ultraWide": self = .ultraWide
+        default: return nil
+        }
+    }
+
+    public var rawValue: RawValue {
+        switch self {
+        case .wideAngle: return "wideAngle"
+        case .telephoto: return "telephoto"
+        case .ultraWide: return "ultraWide"
+        }
+    }
+
     var deviceType: AVCaptureDevice.DeviceType {
         switch self {
         case .wideAngle:
@@ -25,7 +48,7 @@ public enum CameraType {
             return .builtInUltraWideCamera
         }
     }
-    
+
     var localizedName: String {
         switch self {
         case .wideAngle:
@@ -40,18 +63,18 @@ public enum CameraType {
 
 // MARK: - Publicly Visible State Enums
 
-// Expose a simplified WebSocket status for the UI
 public enum PublicWebSocketStatus {
     case idle
     case starting
     case listening(port: UInt16)
     case stopped
-    case failed(String) // Simple error string
+    case failed(String)
     case clientConnected
     case clientDisconnected
+    case notApplicable
 }
 
-public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampleBufferDelegate, RTCPeerConnectionDelegate, WebSocketSignalingServerDelegate, ObservableObject {
+public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampleBufferDelegate, RTCPeerConnectionDelegate, SignalingServerDelegate, WebSocketSignalingServerStateDelegate, ObservableObject {
 
     @Published public private(set) var connectionState: RTCIceConnectionState = .new
     @Published public private(set) var localSDP: RTCSessionDescription?
@@ -60,10 +83,10 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
     @Published public private(set) var currentCameraType: CameraType = .wideAngle
     @Published public private(set) var availableBackCameraTypes: [CameraType] = []
     @Published public var deviceOrientation: UIDeviceOrientation = .portrait
-    // New published property for WS status
     @Published public private(set) var webSocketStatus: PublicWebSocketStatus = .idle
     public let iceCandidateSubject = PassthroughSubject<RTCIceCandidate, Never>()
     public let previewView: UIView
+    public private(set) var config: HuanCaptureConfig
 
     private let internalPreviewView = RTCMTLVideoView(frame: .zero)
     private var peerConnectionFactory: RTCPeerConnectionFactory!
@@ -75,47 +98,59 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
     private var videoDeviceInput: AVCaptureDeviceInput?
     private let videoDataOutput = AVCaptureVideoDataOutput()
     private let videoOutputQueue = DispatchQueue(label: "com.huancapture.videoOutputQueue")
-    private let logger: Logger
+    internal let logger: Logger
     private var isStoppingManually = false
-    internal let config: HuanCaptureConfig // Allow internal access
-    private var signalingServer: WebSocketSignalingServer?
-    // Add state to track last logged orientation warning
+    internal var signalingServer: SignalingServerProtocol?
     private var lastLoggedOrientationWarning: (AVCaptureDevice.Position, UIDeviceOrientation)? = nil
 
-    // Public getter for logging state
     public var isLoggingEnabled: Bool {
         get { return config.isLoggingEnabled }
     }
     
-    // Public getter for WebSocket signaling state
-    public var isWebSocketSignalingEnabled: Bool {
-        get { return config.enableWebSocketSignaling }
-    }
-
-    /// 使用默认配置初始化 HuanCaptureManager
-    /// WebSocket 信令服务器在此模式下禁用。
     @available(*, deprecated, message: "Use init(config:) instead to specify configuration.")
     public convenience override init() {
         self.init(config: HuanCaptureConfig.default)
     }
 
-    /// 使用指定配置初始化 HuanCaptureManager
-    /// - Parameter config: HuanCapture 的配置选项。
     public init(config: HuanCaptureConfig = HuanCaptureConfig.default) {
         self.config = config
         self.logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.huancapture", category: "HuanCapture")
         self.previewView = internalPreviewView
         super.init()
-        if config.isLoggingEnabled { logger.info("HuanCapture initializing with config: EnableWebSocket=\(config.enableWebSocketSignaling), Port=\(config.webSocketPort), Logging=\(config.isLoggingEnabled)") }
+        if config.isLoggingEnabled { logger.info("HuanCapture initializing with config: Mode=\(String(describing: config.signalingMode)), Logging=\(config.isLoggingEnabled)") }
 
         internalPreviewView.videoContentMode = .scaleAspectFill
 
-        if config.enableWebSocketSignaling {
-            signalingServer = WebSocketSignalingServer(port: config.webSocketPort, isLoggingEnabled: config.isLoggingEnabled)
-            signalingServer?.delegate = self
-            webSocketStatus = .idle // Set initial status based on config
-        } else {
-            webSocketStatus = .stopped // Or perhaps a 'disabled' state? Using stopped for now.
+        switch config.signalingMode {
+        case .webSocket:
+            let wsSignaler = WebSocketSignalingServer(port: config.webSocketPort, isLoggingEnabled: config.isLoggingEnabled)
+            wsSignaler.delegate = self
+            wsSignaler.internalStateDelegate = self
+            self.signalingServer = wsSignaler
+            self.webSocketStatus = .idle
+            if config.isLoggingEnabled { logger.info("Using WebSocket signaling mode.") }
+            
+        #if canImport(es_cast_client_ios)
+            
+        case .esMessenger(let device):
+            setupEsSignaling(device: device)
+            self.webSocketStatus = .notApplicable
+            if config.isLoggingEnabled { logger.info("Using EsMessenger signaling mode.") }
+        
+            if config.isLoggingEnabled { logger.error("EsMessenger mode configured but es_cast_client_ios not imported. Falling back to custom mode.") }
+            self.signalingServer = nil
+            self.webSocketStatus = .notApplicable
+            
+            #endif
+            
+        case .custom:
+            self.signalingServer = nil
+            self.webSocketStatus = .notApplicable
+            if config.isLoggingEnabled { logger.info("Using custom signaling mode.") }
+        default:
+             if config.isLoggingEnabled { logger.warning("Unknown signaling mode encountered during init. Defaulting to custom.") }
+             self.signalingServer = nil
+             self.webSocketStatus = .notApplicable
         }
 
         setupWebRTC()
@@ -281,9 +316,7 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
             return
         }
         
-        if config.enableWebSocketSignaling {
-            signalingServer?.start()
-        }
+        signalingServer?.start()
 
         let configuration = RTCConfiguration()
         configuration.sdpSemantics = .unifiedPlan
@@ -294,6 +327,7 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
             DispatchQueue.main.async { [weak self] in
                  guard let self = self else { return }
                  self.captureError = NSError(domain: "HuanCaptureError", code: 4, userInfo: [NSLocalizedDescriptionKey: "Failed to create PeerConnection"])
+                 self.signalingServer?.stop()
             }
             return
         }
@@ -320,7 +354,7 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
                                             optionalConstraints: nil)
 
         pc.offer(for: constraints) { [weak self] (sdp, error) in
-             DispatchQueue.main.async {
+             DispatchQueue.main.async { // Ensure UI/state updates are on main thread
                  guard let self = self else { return }
                  if let error = error {
                      if self.config.isLoggingEnabled { self.logger.error("Failed to create offer SDP: \(error.localizedDescription)") }
@@ -338,7 +372,7 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
 
                  if self.config.isLoggingEnabled { self.logger.info("Offer SDP created successfully.") }
                  pc.setLocalDescription(sdp) { [weak self] (error) in
-                      DispatchQueue.main.async {
+                      DispatchQueue.main.async { // Ensure UI/state updates are on main thread
                           guard let self = self else { return }
                           if let error = error {
                              if self.config.isLoggingEnabled { self.logger.error("Failed to set local SDP: \(error.localizedDescription)") }
@@ -351,9 +385,7 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
 
                           self.configureSenderParameters()
 
-                          if self.config.enableWebSocketSignaling {
-                              self.signalingServer?.sendOffer(sdp.sdp)
-                          }
+                          self.signalingServer?.sendOffer(sdp: sdp.sdp)
                           
                           self.startCaptureSession()
                       }
@@ -371,9 +403,7 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
         if config.isLoggingEnabled { logger.info("Attempting to stop streaming...") }
         self.isStoppingManually = true
 
-        if config.enableWebSocketSignaling {
-            signalingServer?.stop()
-        }
+        signalingServer?.stop()
 
         stopCaptureSession()
 
@@ -426,9 +456,8 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
             if config.isLoggingEnabled { logger.error("PeerConnection not available when trying to add ICE candidate.") }
             return
          }
-         guard pc.remoteDescription != nil else {
-            if config.isLoggingEnabled { logger.warning("Remote description not set yet when adding ICE candidate. This might be okay with Trickle ICE.") }
-             return
+         if pc.remoteDescription == nil {
+            if config.isLoggingEnabled { logger.warning("Remote description not set yet when adding ICE candidate. Proceeding for Trickle ICE.") }
          }
 
         if config.isLoggingEnabled { logger.debug("Adding received ICE candidate: \(iceCandidate.sdp)") }
@@ -873,7 +902,7 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
     }
 
     public func peerConnection(_ peerConnection: RTCPeerConnection, didChange newState: RTCIceConnectionState) {
-        DispatchQueue.main.async { [weak self] in
+        DispatchQueue.main.async { [weak self] in // Ensure UI/state updates are on main thread
             guard let self = self else { return }
 
             let previousState = self.connectionState
@@ -888,6 +917,11 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
                 if self.config.isLoggingEnabled { self.logger.info("WebRTC Connection Established.") }
                 self.isStoppingManually = false
                 self.captureError = nil
+                #if canImport(es_cast_client_ios)
+                if case .esMessenger = self.config.signalingMode {
+                     self.sendAvailableBackCamerasToEsDevice()
+                }
+                #endif
 
             case .disconnected:
                 if wasStopping {
@@ -911,7 +945,7 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
                 if let currentError = self.captureError as NSError?,
                    currentError.domain == "HuanCaptureError",
                    currentError.code == 7 {
-                    self.captureError = nil
+                    self.captureError = nil 
                 }
 
             case .new, .checking, .count:
@@ -930,12 +964,28 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
     public func peerConnection(_ peerConnection: RTCPeerConnection, didGenerate candidate: RTCIceCandidate) {
         if config.isLoggingEnabled { logger.info("Generated ICE candidate: \(candidate.sdp)") }
         
-        if config.enableWebSocketSignaling {
-            signalingServer?.sendCandidate(candidate.sdp, sdpMid: candidate.sdpMid, sdpMLineIndex: candidate.sdpMLineIndex)
+        if let server = signalingServer {
+             server.sendCandidate(sdp: candidate.sdp, sdpMid: candidate.sdpMid, sdpMLineIndex: candidate.sdpMLineIndex)
         } else {
              DispatchQueue.main.async { [weak self] in
                  guard let self = self else { return }
-                 self.iceCandidateSubject.send(candidate)
+                 #if canImport(es_cast_client_ios)
+                 if self.config.signalingMode == .custom {
+                     if self.config.isLoggingEnabled { self.logger.info("Sending ICE candidate via PassthroughSubject for custom mode.") }
+                     self.iceCandidateSubject.send(candidate)
+                 } else if case .esMessenger = self.config.signalingMode {
+                     if self.config.isLoggingEnabled { self.logger.warning("Generated ICE candidate in esMessenger mode but signalingServer is nil.") }
+                 } else if self.config.signalingMode == .webSocket {
+                      if self.config.isLoggingEnabled { self.logger.warning("Generated ICE candidate in webSocket mode but signalingServer is nil.") }
+                 }
+                 #else
+                 if self.config.signalingMode == .custom {
+                     if self.config.isLoggingEnabled { self.logger.info("Sending ICE candidate via PassthroughSubject for custom mode (es_cast_client_ios not imported).") }
+                     self.iceCandidateSubject.send(candidate)
+                 } else {
+                     if self.config.isLoggingEnabled { self.logger.warning("Generated ICE candidate but no signaling server available and not in custom mode (es_cast_client_ios not imported).") }
+                 }
+                 #endif
              }
         }
     }
@@ -956,11 +1006,27 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
         if config.isLoggingEnabled { logger.info("PeerConnection did open data channel: \(dataChannel.label) - (Unused in send-only)") }
     }
 
-    // MARK: - WebSocketSignalingServerDelegate
+    // MARK: - SignalingServerDelegate (NEW)
+
+    public func signalingServer(didReceiveAnswer sdp: String) {
+        if config.isLoggingEnabled { logger.info("SignalingDelegate: Received Answer SDP") }
+        let sessionDescription = RTCSessionDescription(type: .answer, sdp: sdp)
+        self.setRemoteDescription(sessionDescription)
+    }
+
+    public func signalingServer(didReceiveCandidate candidate: String, sdpMid: String?, sdpMLineIndex: Int32?) {
+        if config.isLoggingEnabled { logger.info("SignalingDelegate: Received ICE Candidate") }
+        let iceCandidate = RTCIceCandidate(sdp: candidate, sdpMLineIndex: sdpMLineIndex ?? -1, sdpMid: sdpMid)
+        self.addICECandidate(iceCandidate)
+    }
+
+    // MARK: - WebSocketSignalingServerStateDelegate (Was WebSocketSignalingServerDelegate)
     
-    func webSocketServer(_ server: WebSocketSignalingServer, didChangeState newState: WebSocketServerState) {
+    // Renamed method to match the new delegate protocol
+    internal func webSocketServer(_ server: WebSocketSignalingServer, didChangeState newState: WebSocketServerState) {
         var newPublicStatus: PublicWebSocketStatus? = nil
 
+        // Map internal WS state to public status
         switch newState {
         case .idle:
             newPublicStatus = .idle
@@ -978,44 +1044,23 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
             newPublicStatus = .clientDisconnected
         }
         
-        // Update published state on main thread
         if let status = newPublicStatus {
             DispatchQueue.main.async {
-                self.webSocketStatus = status
+                if case .webSocket = self.config.signalingMode {
+                     self.webSocketStatus = status
+                }
             }
         }
 
-        if config.isLoggingEnabled { logger.debug("Manager received WS state update: \(String(describing: newState))") }
+        if config.isLoggingEnabled { logger.debug("Manager received WS state update: \(String(describing: newState)) -> Mapped Public Status: \(String(describing: newPublicStatus)) ") }
     }
     
-    func webSocketServer(_ server: WebSocketSignalingServer, didReceiveAnswer sdp: String) {
-        if config.isLoggingEnabled { logger.info("WebSocketServerDelegate: Received Answer SDP") }
-        let sessionDescription = RTCSessionDescription(type: .answer, sdp: sdp)
-        self.setRemoteDescription(sessionDescription)
-    }
-    
-    func webSocketServer(_ server: WebSocketSignalingServer, didReceiveCandidate candidate: String, sdpMid: String?, sdpMLineIndex: Int32?) {
-        if config.isLoggingEnabled { logger.info("WebSocketServerDelegate: Received ICE Candidate") }
-        let iceCandidate = RTCIceCandidate(sdp: candidate, sdpMLineIndex: sdpMLineIndex ?? -1, sdpMid: sdpMid)
-        self.addICECandidate(iceCandidate)
-    }
 
-    // public func setLogging(enabled: Bool) // Keep public
+    // MARK: - Logging Control
     public func setLogging(enabled: Bool) {
         if config.isLoggingEnabled != enabled {
-             logger.info("Logging setting change requested: \(enabled ? "Enabled" : "Disabled") (Note: Runtime change may not fully apply)")
+             logger.info("Logging setting change requested: \(enabled ? "Enabled" : "Disabled") (Note: Affects future checks of config.isLoggingEnabled)")
         }
     }
 }
 
-extension RTCDataChannelState {
-    // ... existing code ...
-}
-
-extension RTCSignalingState {
-    // ... existing code ...
-}
-
-extension RTCIceGatheringState {
-    // ... existing code ...
-}

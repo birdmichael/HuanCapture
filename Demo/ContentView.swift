@@ -42,7 +42,7 @@ struct ContentView: View {
     @State private var logMessages: [LogEntry] = []
     private let maxLogEntries = 100
     
-    init(config: HuanCaptureConfig = HuanCaptureConfig(enableWebSocketSignaling: true, isLoggingEnabled: true)) {
+    init(config: HuanCaptureConfig = HuanCaptureConfig.default) {
         self.config = config
         _captureManager = StateObject(wrappedValue: HuanCaptureManager(config: config))
     }
@@ -78,13 +78,13 @@ struct ContentView: View {
             ControlsSheetView(captureManager: captureManager, 
                               isMirrored: $isMirrored, 
                               logMessages: $logMessages, 
-                              webSocketPort: config.enableWebSocketSignaling ? config.webSocketPort : nil)
+                              webSocketPort: captureManager.config.signalingMode == .webSocket ? config.webSocketPort : nil)
         }
         .onReceive(captureManager.$connectionState) { newState in
             log(.info, "WebRTC 状态: \(newState.chineseDescription)")
         }
         .onReceive(captureManager.$webSocketStatus) { newState in
-            if captureManager.isWebSocketSignalingEnabled {
+            if captureManager.config.signalingMode == .webSocket {
                 log(.info, "WebSocket 状态: \(newState.chineseDescription)")
             }
         }
@@ -106,8 +106,8 @@ struct ContentView: View {
             statusIndicator(color: captureManager.connectionState.color, 
                               label: "WebRTC:\(captureManager.connectionState.chineseDescription)")
             
-            if captureManager.isWebSocketSignalingEnabled {
-                statusIndicator(color: captureManager.webSocketStatus.color, 
+            if captureManager.config.signalingMode == .webSocket {
+                statusIndicator(color: captureManager.webSocketStatus.color,
                                 label: "ws:\(captureManager.webSocketStatus.chineseDescription)")
             }
             
@@ -411,6 +411,8 @@ extension PublicWebSocketStatus {
         case .failed(let reason): return "失败: \(reason)"
         case .clientConnected: return "客户端已连接"
         case .clientDisconnected: return "客户端断开"
+        case .notApplicable:
+            return "未处理"
         }
     }
     var color: Color {
