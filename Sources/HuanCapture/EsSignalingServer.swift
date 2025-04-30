@@ -1,11 +1,12 @@
 #if canImport(es_cast_client_ios)
-import Foundation
 import es_cast_client_ios
+import Foundation
 import OSLog
 
 /// 使用 EsMessenger 实现的信令服务器。
 class EsSignalingServer: SignalingServerProtocol {
     weak var delegate: SignalingServerDelegate?
+    weak var manager: HuanCaptureManager?
     private let targetDevice: EsDevice
     private let isLoggingEnabled: Bool
     private let logger: Logger
@@ -14,9 +15,9 @@ class EsSignalingServer: SignalingServerProtocol {
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
 
-    // 自定义事件名称常量
+    /// 自定义事件名称常量
     private enum EsEventName {
-        static let sdp = "HuanCapture_SDP"
+        static let sdp = "OnLinkWebRTC"
         static let ice = "HuanCapture_ICE"
         static let state = "HuanCapture"
         static let camera = "HuanCapture_Camera"
@@ -25,105 +26,119 @@ class EsSignalingServer: SignalingServerProtocol {
         static let backCamera = "HuanCapture_BackCamera"
     }
 
-    // 内部状态，当前未使用，但可以添加以跟踪发送状态等
+    /// 内部状态，当前未使用，但可以添加以跟踪发送状态等
     private var isStarted = false
 
-    init(device: EsDevice, isLoggingEnabled: Bool) {
+    init(device: EsDevice, isLoggingEnabled: Bool, manager: HuanCaptureManager? = nil) {
         self.targetDevice = device
         self.isLoggingEnabled = isLoggingEnabled
         self.logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.huancapture", category: "EsSignalingServer")
+        self.manager = manager
         if isLoggingEnabled { logger.info("EsSignalingServer initialized for device: \(device.deviceName) (\(device.deviceIp))") }
+    }
+    
+    deinit {
+        if isLoggingEnabled { logger.info("EsSignalingServer deinitialized") }
     }
 
     func start() {
-        // 对于 EsMessenger，"启动" 概念上是已经连接的状态，
-        // 因此这里主要是标记内部状态。
         isStarted = true
         if isLoggingEnabled { logger.info("EsSignalingServer started (marked as active). Assumes EsMessenger connection is handled externally.") }
+        let action = EsAction.makeCustom(name: "HuanCapture")
+        EsMessenger.shared.addDelegate(self)
+        EsMessenger.shared.sendDeviceCommand(device: targetDevice, action: action)
     }
+    
 
     func stop() {
         // 同样，"停止" 只是标记内部状态。
         isStarted = false
+        EsMessenger.shared.removeDelegate(self)
         if isLoggingEnabled { logger.info("EsSignalingServer stopped (marked as inactive).") }
     }
 
     func sendOffer(sdp: String) {
+        let processedSdp = sdp.replacingOccurrences(of: "\r\n", with: "#")
+
         guard isStarted else {
             if isLoggingEnabled { logger.warning("EsSignalingServer not started, cannot send offer.") }
             return
         }
+        
 
-        if isLoggingEnabled { logger.info("Sending Offer SDP via EsMessenger...") }
-        
-        // 封装 SDP 数据为 JSON
-        let payload = ["type": "offer", "sdp": sdp]
-        guard let jsonData = try? encoder.encode(payload) else {
-            if isLoggingEnabled { logger.error("Failed to encode Offer SDP to JSON.") }
-            return
+        if isLoggingEnabled { logger.info("Sending Offer SDP via EsMessenger with chunking...") }
+
+        let chunkSize = 512 // 字节
+        let sdpData = processedSdp.data(using: .utf8) ?? Data()
+        let totalLength = sdpData.count
+        let totalChunks = Int(ceil(Double(totalLength) / Double(chunkSize)))
+        let messageId = UUID().uuidString
+
+        for i in 0..<totalChunks {
+            let start = i * chunkSize
+            let end = min(start + chunkSize, totalLength)
+            let chunkData = sdpData.subdata(in: start..<end)
+            let chunkString = String(data: chunkData, encoding: .utf8) ?? ""
+
+            let payload: [String: Any] = [
+                "action": "offer",
+                "sdp": chunkString,
+                "chunkNumber": i + 1,
+                "totalChunks": totalChunks,
+                "id": messageId
+            ]
+            let action = EsAction.makeCustom(name: EsEventName.sdp).args(["url": "home", "params": payload])
+            EsMessenger.shared.sendDeviceCommand(device: targetDevice, action: action)
+            if isLoggingEnabled { logger.info("Sent SDP chunk \(i + 1)/\(totalChunks) with id: \(messageId)") }
         }
-        guard let jsonString = String(data: jsonData, encoding: .utf8) else {
-             if isLoggingEnabled { logger.error("Failed to convert Offer SDP JSON data to String.") }
-             return
-        }
-        
-        // 创建 EsAction 并发送
-        let action = EsAction.makeCustom(name: EsEventName.sdp).args(jsonString)
-        EsMessenger.shared.sendDeviceCommand(device: targetDevice, action: action)
     }
 
     func sendCandidate(sdp: String, sdpMid: String?, sdpMLineIndex: Int32?) {
-         guard isStarted else {
+        guard isStarted else {
             if isLoggingEnabled { logger.warning("EsSignalingServer not started, cannot send candidate.") }
             return
         }
-        
+
         if isLoggingEnabled { logger.info("Sending ICE Candidate via EsMessenger...") }
-        
+
         // 封装 ICE Candidate 数据为 JSON
         var payload: [String: Any?] = [
-            "type": "candidate",
+            "action": "candidate",
             "candidate": sdp,
             "sdpMLineIndex": sdpMLineIndex,
             "sdpMid": sdpMid
         ]
-        // Clean nil values if needed, though JSONSerialization handles them
-        payload = payload.compactMapValues { $0 }
-        
-        guard let jsonData = try? JSONSerialization.data(withJSONObject: payload, options: []) else {
-            if isLoggingEnabled { logger.error("Failed to encode ICE Candidate to JSON.") }
-            return
-        }
-         guard let jsonString = String(data: jsonData, encoding: .utf8) else {
-             if isLoggingEnabled { logger.error("Failed to convert ICE Candidate JSON data to String.") }
-             return
-        }
-        
-        // 创建 EsAction 并发送
-        let action = EsAction.makeCustom(name: EsEventName.ice).args(jsonString)
+
+        let action = EsAction.makeCustom(name: EsEventName.sdp).args(["url": "home", "params": payload])
         EsMessenger.shared.sendDeviceCommand(device: targetDevice, action: action)
     }
-    
-    // MARK: - Methods to receive data from HuanCapture+Es
-    // 这些方法由 HuanCaptureManager 在收到 EsEvent 时调用
-    
-    /// 由外部调用，用于处理收到的 Answer SDP。
+
     func handleAnswerSdp(_ sdp: String) {
-         if isLoggingEnabled { logger.info("Received Answer SDP from external handler.") }
-         // 回调给 HuanCaptureManager
-         DispatchQueue.main.async {
-             self.delegate?.signalingServer(didReceiveAnswer: sdp)
-         }
+        if isLoggingEnabled { logger.info("Received Answer SDP from external handler.") }
+        DispatchQueue.main.async {
+            self.delegate?.signalingServer(didReceiveAnswer: sdp)
+        }
     }
-    
-    /// 由外部调用，用于处理收到的 ICE Candidate。
+
     func handleIceCandidate(sdp: String, sdpMid: String?, sdpMLineIndex: Int32?) {
-         if isLoggingEnabled { logger.info("Received ICE Candidate from external handler.") }
-         // 回调给 HuanCaptureManager
-         DispatchQueue.main.async {
-             self.delegate?.signalingServer(didReceiveCandidate: sdp, sdpMid: sdpMid, sdpMLineIndex: sdpMLineIndex)
-         }
+        if isLoggingEnabled { logger.info("Received ICE Candidate from external handler.") }
+        DispatchQueue.main.async {
+            self.delegate?.signalingServer(didReceiveCandidate: sdp, sdpMid: sdpMid, sdpMLineIndex: sdpMLineIndex)
+        }
     }
 }
 
-#endif // canImport(es_cast_client_ios) 
+// 新增：弱引用 HuanCaptureManager
+weak var manager: HuanCaptureManager?
+
+extension EsSignalingServer: MessengerCallback {
+    func onFindDevice(_ device: EsDevice) {
+        
+    }
+    
+    func onReceiveEvent(_ event: EsEvent) {
+        self.manager?.handleEsEvent(event)
+    }
+}
+
+#endif // canImport(es_cast_client_ios)

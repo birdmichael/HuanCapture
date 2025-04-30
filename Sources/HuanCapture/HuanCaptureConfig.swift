@@ -45,15 +45,15 @@ public struct HuanCaptureConfig {
     /// 使用的信令模式。
     public let signalingMode: SignalingMode
 
-    public static let `default` = HuanCaptureConfig()
+    public static let `default` = HuanCaptureConfig(signalingModeInput: .webSocket)
 
     public init(
         webSocketPort: UInt16 = 8080,
         isLoggingEnabled: Bool = true,
-        maxBitrateBps: Int = 5_000_000,
+        maxBitrateBps: Int = 50_000_000,
         minBitrateBps: Int = 1_000_000,
         maxFramerateFps: Int = 30,
-        signalingModeInput: SignalingMode = .webSocket
+        signalingModeInput: SignalingMode
     ) {
         self.webSocketPort = webSocketPort
         self.isLoggingEnabled = isLoggingEnabled

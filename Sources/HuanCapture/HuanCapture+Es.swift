@@ -8,8 +8,8 @@ import Combine
 // MARK: - EsAction Constants and Extensions
 
 extension EsAction {
-    private enum EsEventName {
-        static let sdp = "HuanCapture_SDP"
+    enum EsEventName {
+        static let sdp = "answer"
         static let ice = "HuanCapture_ICE"
         static let state = "HuanCapture"
         static let camera = "HuanCapture_Camera"
@@ -40,36 +40,36 @@ extension HuanCaptureManager {
     }
 
     internal func setupEsSignaling(device: EsDevice) {
-        let esSignaler = EsSignalingServer(device: device, isLoggingEnabled: config.isLoggingEnabled)
+        let esSignaler = EsSignalingServer(device: device, isLoggingEnabled: config.isLoggingEnabled, manager: self)
         esSignaler.delegate = self
         self.signalingServer = esSignaler
         if config.isLoggingEnabled { esLogger.info("EsSignalingServer setup complete for device: \(device.deviceName)") }
     }
 
     public func handleEsEvent(_ event: EsEvent) {
-        if config.isLoggingEnabled { esLogger.info("Handling EsEvent: \(event.name), Args: \(event.args ?? "N/A")") }
+        if config.isLoggingEnabled { esLogger.info("Handling EsEvent: \(event.name)") }
 
         DispatchQueue.main.async { [weak self] in
-             guard let self = self else { return }
+            guard let self = self else { return }
 
-             switch event.name {
-             case EsAction.EsEventName.sdp:
-                 self.handleEsSdpEvent(event.args)
-             case EsAction.EsEventName.ice:
-                 self.handleEsIceEvent(event.args)
-             case EsAction.EsEventName.state:
-                 self.handleEsStateEvent(event.args)
-             case EsAction.EsEventName.camera:
-                 self.handleEsCameraEvent(event.args)
-             case EsAction.EsEventName.mirrored:
-                 self.handleEsMirroredEvent(event.args)
-             case EsAction.EsEventName.backCamera:
-                 self.handleEsBackCameraEvent(event.args)
-             case EsAction.EsEventName.backCameraAll:
-                 if self.config.isLoggingEnabled { self.esLogger.info("Received BackCameraAll event (usually sent from phone), ignoring.") }
-             default:
-                 if self.config.isLoggingEnabled { self.esLogger.warning("Received unhandled EsEvent name: \(event.name)") }
-             }
+            switch event.name {
+            case EsAction.EsEventName.sdp:
+                self.handleEsSdpEvent(event.args as? String)
+            case EsAction.EsEventName.ice:
+                self.handleEsIceEvent(event.args as? String)
+            case EsAction.EsEventName.state:
+                self.handleEsStateEvent(event.args as? String)
+            case EsAction.EsEventName.camera:
+                self.handleEsCameraEvent(event.args as? String)
+            case EsAction.EsEventName.mirrored:
+                self.handleEsMirroredEvent(event.args as? String)
+            case EsAction.EsEventName.backCamera:
+                self.handleEsBackCameraEvent(event.args as? String)
+            case EsAction.EsEventName.backCameraAll:
+                if self.config.isLoggingEnabled { self.esLogger.info("Received BackCameraAll event (usually sent from phone), ignoring.") }
+            default:
+                if self.config.isLoggingEnabled { self.esLogger.warning("Received unhandled EsEvent name: \(event.name)") }
+            }
         }
     }
 
@@ -85,32 +85,29 @@ extension HuanCaptureManager {
     // MARK: - Private ES Event Handlers
 
     private func handleEsSdpEvent(_ args: String?) {
-        guard let jsonString = args, let data = jsonString.data(using: .utf8) else {
+        guard let argsString = args else {
             if config.isLoggingEnabled { esLogger.warning("Received SDP event with invalid or missing arguments.") }
             return
         }
-        do {
-            let decoder = JSONDecoder()
-            if let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: String],
-               let type = json["type"],
-               let sdp = json["sdp"] {
-                
-                if type == "answer" {
-                     if config.isLoggingEnabled { esLogger.info("Handling received Answer SDP via ES.") }
-                    guard let esSignaler = self.signalingServer as? EsSignalingServer else { return }
-                    esSignaler.handleAnswerSdp(sdp)
-                    
-                } else if type == "offer" {
-                     if config.isLoggingEnabled { esLogger.warning("Received unexpected Offer SDP via ES from TV.") }
-                     // 通常手机端发送 Offer，TV 端发送 Answer
-                 } else {
-                      if config.isLoggingEnabled { esLogger.warning("Received SDP event with unknown type: \(type)") }
-                 }
+        guard let argsData = argsString.data(using: .utf8),
+           let json = try? JSONSerialization.jsonObject(with: argsData) as? [String: Any] else {
+            return
+        }
+        
+        if let type = json["action"] as? String,
+           let sdp = json["sdp"] as? String {
+            if type == "answer" {
+                if config.isLoggingEnabled { esLogger.info("Handling received Answer SDP via ES.") }
+                guard let esSignaler = self.signalingServer as? EsSignalingServer else { return }
+                esSignaler.handleAnswerSdp(sdp)
+            } else if type == "offer" {
+                if config.isLoggingEnabled { esLogger.warning("Received unexpected Offer SDP via ES from TV.") }
+                // 通常手机端发送 Offer，TV 端发送 Answer
             } else {
-                 if config.isLoggingEnabled { esLogger.warning("Failed to parse SDP JSON or missing fields.") }
+                if config.isLoggingEnabled { esLogger.warning("Received SDP event with unknown type: \(type)") }
             }
-        } catch {
-            if config.isLoggingEnabled { esLogger.error("Error decoding SDP JSON: \(error.localizedDescription)") }
+        } else {
+            if config.isLoggingEnabled { esLogger.warning("Failed to parse SDP JSON or missing fields.") }
         }
     }
 
@@ -209,7 +206,7 @@ extension HuanCaptureManager {
 
     internal func sendAvailableBackCamerasToEsDevice() {
         guard case .esMessenger(let device) = config.signalingMode else {
-            // if config.isLoggingEnabled { esLogger.debug("Not in EsMessenger mode, skipping sending available cameras.") }
+             if config.isLoggingEnabled { esLogger.debug("Not in EsMessenger mode, skipping sending available cameras.") }
             return
         }
         
@@ -224,26 +221,14 @@ extension HuanCaptureManager {
     }
 }
 
-extension CameraType: RawRepresentable {
-    public typealias RawValue = String
-
-    public init?(rawValue: RawValue) {
-        switch rawValue {
-        case "wideAngle": self = .wideAngle
-        case "telephoto": self = .telephoto
-        case "ultraWide": self = .ultraWide
-        default: return nil
-        }
+extension EsEvent {
+    var name: String {
+        return data["action"] as? String ?? ""
     }
-
-    public var rawValue: RawValue {
-        switch self {
-        case .wideAngle: return "wideAngle"
-        case .telephoto: return "telephoto"
-        case .ultraWide: return "ultraWide"
-        }
+    
+    var args: Any {
+        return data["args"]
     }
 }
-
 
 #endif

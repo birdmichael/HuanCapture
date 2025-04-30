@@ -133,14 +133,13 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
         #if canImport(es_cast_client_ios)
             
         case .esMessenger(let device):
-            setupEsSignaling(device: device)
             self.webSocketStatus = .notApplicable
             if config.isLoggingEnabled { logger.info("Using EsMessenger signaling mode.") }
         
             if config.isLoggingEnabled { logger.error("EsMessenger mode configured but es_cast_client_ios not imported. Falling back to custom mode.") }
-            self.signalingServer = nil
             self.webSocketStatus = .notApplicable
             
+            setupEsSignaling(device: device)
             #endif
             
         case .custom:
