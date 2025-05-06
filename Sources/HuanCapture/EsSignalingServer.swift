@@ -3,12 +3,23 @@ import Foundation
 import OSLog
 import es_cast_client_ios
 
+struct PrintLog {
+    func info(_ message: String) {
+        print("message")
+    }
+    
+    func warning(_ message: String) {
+        print("message")
+    }
+}
+
 class EsSignalingServer: SignalingServerProtocol {
     weak var delegate: SignalingServerDelegate?
     weak var manager: HuanCaptureManager?
     private let targetDevice: EsDevice
     private let isLoggingEnabled: Bool
-    private let logger: Logger
+//    private let logger: Logger
+    private let logger: PrintLog
 
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
@@ -29,7 +40,8 @@ class EsSignalingServer: SignalingServerProtocol {
     init(device: EsDevice, isLoggingEnabled: Bool, manager: HuanCaptureManager? = nil) {
         self.targetDevice = device
         self.isLoggingEnabled = isLoggingEnabled
-        self.logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.huancapture", category: "EsSignalingServer")
+//        self.logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.huancapture", category: "EsSignalingServer")
+        self.logger = PrintLog()
         self.manager = manager
         if isLoggingEnabled { logger.info("EsSignalingServer initialized for device: \(device.deviceName) (\(device.deviceIp))") }
     }
