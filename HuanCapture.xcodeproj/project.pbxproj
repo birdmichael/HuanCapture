@@ -12,7 +12,7 @@
 		802A2A582DB9265D00F88F2A /* HuanCapture in Frameworks */ = {isa = PBXBuildFile; productRef = 802A2A572DB9265D00F88F2A /* HuanCapture */; };
 		802A2A5B2DB926CF00F88F2A /* HuanCapture in Frameworks */ = {isa = PBXBuildFile; productRef = 802A2A5A2DB926CF00F88F2A /* HuanCapture */; };
 		802A2A6A2DBA0CF700F88F2A /* HuanCapture in Frameworks */ = {isa = PBXBuildFile; productRef = 802A2A692DBA0CF700F88F2A /* HuanCapture */; };
-		8097DC5B2DC243270013E750 /* es-cast-client-ios in Frameworks */ = {isa = PBXBuildFile; productRef = 8097DC5A2DC243270013E750 /* es-cast-client-ios */; };
+		8097DC882DC9F0F50013E750 /* es-cast-client-ios in Frameworks */ = {isa = PBXBuildFile; productRef = 8097DC872DC9F0F50013E750 /* es-cast-client-ios */; };
 		80FA1D932DBFD0F20040B8F3 /* HuanCapture in Frameworks */ = {isa = PBXBuildFile; productRef = 80FA1D922DBFD0F20040B8F3 /* HuanCapture */; };
 /* End PBXBuildFile section */
 
@@ -51,7 +51,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				8097DC5B2DC243270013E750 /* es-cast-client-ios in Frameworks */,
+				8097DC882DC9F0F50013E750 /* es-cast-client-ios in Frameworks */,
 				80FA1D932DBFD0F20040B8F3 /* HuanCapture in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -133,7 +133,7 @@
 			name = EsDemo;
 			packageProductDependencies = (
 				80FA1D922DBFD0F20040B8F3 /* HuanCapture */,
-				8097DC5A2DC243270013E750 /* es-cast-client-ios */,
+				8097DC872DC9F0F50013E750 /* es-cast-client-ios */,
 			);
 			productName = EsDemo;
 			productReference = 80FA1D812DBFCE6C0040B8F3 /* EsDemo.app */;
@@ -168,7 +168,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				80FA1D912DBFD0F20040B8F3 /* XCLocalSwiftPackageReference "../HuanCapture" */,
-				8097DC592DC243270013E750 /* XCRemoteSwiftPackageReference "es-cast-client-ios" */,
+				8097DC862DC9F0F50013E750 /* XCRemoteSwiftPackageReference "es-cast-client-ios" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 805E14C92DB7F630004CF67D /* Products */;
@@ -499,9 +499,9 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		8097DC592DC243270013E750 /* XCRemoteSwiftPackageReference "es-cast-client-ios" */ = {
+		8097DC862DC9F0F50013E750 /* XCRemoteSwiftPackageReference "es-cast-client-ios" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/birdmichael/es-cast-client-ios.git";
+			repositoryURL = "https://github.com/hanliang-tech/es-cast-client-ios.git";
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 0.1.5;
@@ -530,9 +530,9 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = HuanCapture;
 		};
-		8097DC5A2DC243270013E750 /* es-cast-client-ios */ = {
+		8097DC872DC9F0F50013E750 /* es-cast-client-ios */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 8097DC592DC243270013E750 /* XCRemoteSwiftPackageReference "es-cast-client-ios" */;
+			package = 8097DC862DC9F0F50013E750 /* XCRemoteSwiftPackageReference "es-cast-client-ios" */;
 			productName = "es-cast-client-ios";
 		};
 		80FA1D922DBFD0F20040B8F3 /* HuanCapture */ = {

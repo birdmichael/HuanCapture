@@ -3,7 +3,6 @@ import es_cast_client_ios
 import Foundation
 import OSLog
 
-/// 使用 EsMessenger 实现的信令服务器。
 class EsSignalingServer: SignalingServerProtocol {
     weak var delegate: SignalingServerDelegate?
     weak var manager: HuanCaptureManager?
@@ -11,11 +10,10 @@ class EsSignalingServer: SignalingServerProtocol {
     private let isLoggingEnabled: Bool
     private let logger: Logger
 
-    // JSON 编码器和解码器可以复用
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
 
-    /// 自定义事件名称常量
+
     private enum EsEventName {
         static let sdp = "OnLinkWebRTC"
         static let ice = "HuanCapture_ICE"
@@ -26,7 +24,6 @@ class EsSignalingServer: SignalingServerProtocol {
         static let backCamera = "HuanCapture_BackCamera"
     }
 
-    /// 内部状态，当前未使用，但可以添加以跟踪发送状态等
     private var isStarted = false
 
     init(device: EsDevice, isLoggingEnabled: Bool, manager: HuanCaptureManager? = nil) {
@@ -51,7 +48,6 @@ class EsSignalingServer: SignalingServerProtocol {
     
 
     func stop() {
-        // 同样，"停止" 只是标记内部状态。
         isStarted = false
         EsMessenger.shared.removeDelegate(self)
         if isLoggingEnabled { logger.info("EsSignalingServer stopped (marked as inactive).") }
@@ -128,9 +124,6 @@ class EsSignalingServer: SignalingServerProtocol {
     }
 }
 
-// 新增：弱引用 HuanCaptureManager
-weak var manager: HuanCaptureManager?
-
 extension EsSignalingServer: MessengerCallback {
     func onFindDevice(_ device: EsDevice) {
         
@@ -141,4 +134,4 @@ extension EsSignalingServer: MessengerCallback {
     }
 }
 
-#endif // canImport(es_cast_client_ios)
+#endif
