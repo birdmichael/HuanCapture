@@ -25,7 +25,6 @@ Packages/
 *.resolved
 
 # Frameworks (ignore built frameworks)
-*.xcframework/
 
 # Cocoapods
 Pods/
