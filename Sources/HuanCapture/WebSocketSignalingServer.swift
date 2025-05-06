@@ -39,7 +39,7 @@ class WebSocketSignalingServer: SignalingServerProtocol {
     private var listener: NWListener?
     private var connections: [NWEndpoint: NWConnection] = [:]
     private let queue = DispatchQueue(label: "com.huancapture.websocket.server.queue")
-    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.huancapture", category: "WebSocketServer")
+    private let logger = PrintLog()
     private var isRunning = false
     private let isLoggingEnabled: Bool
     private var state: WebSocketServerState = .idle {

@@ -99,7 +99,7 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
     private var videoDeviceInput: AVCaptureDeviceInput?
     private let videoDataOutput = AVCaptureVideoDataOutput()
     private let videoOutputQueue = DispatchQueue(label: "com.huancapture.videoOutputQueue")
-    internal let logger: Logger
+    internal let logger: PrintLog
     private var isStoppingManually = false
     internal var signalingServer: SignalingServerProtocol?
     private var lastLoggedOrientationWarning: (AVCaptureDevice.Position, UIDeviceOrientation)? = nil
@@ -115,7 +115,7 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
 
     public init(config: HuanCaptureConfig = HuanCaptureConfig.default) {
         self.config = config
-        self.logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.huancapture", category: "HuanCapture")
+        self.logger = PrintLog()
         self.previewView = internalPreviewView
         super.init()
         if config.isLoggingEnabled { logger.info("HuanCapture initializing with config: Mode=\(String(describing: config.signalingMode)), Logging=\(config.isLoggingEnabled)") }

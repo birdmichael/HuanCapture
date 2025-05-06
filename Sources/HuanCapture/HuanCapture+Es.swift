@@ -35,8 +35,8 @@ extension EsAction {
 
 extension HuanCaptureManager {
     
-    private var esLogger: Logger {
-         Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.huancapture", category: "HuanCapture+Es")
+    private var esLogger: PrintLog {
+        PrintLog()
     }
 
     internal func setupEsSignaling(device: EsDevice) {
