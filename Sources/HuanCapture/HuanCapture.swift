@@ -84,6 +84,7 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
     @Published public private(set) var availableBackCameraTypes: [CameraType] = []
     @Published public var deviceOrientation: UIDeviceOrientation = .portrait
     @Published public private(set) var webSocketStatus: PublicWebSocketStatus = .idle
+    @Published public private(set) var isMirror: Bool = false
     public let iceCandidateSubject = PassthroughSubject<RTCIceCandidate, Never>()
     public let previewView: UIView
     public private(set) var config: HuanCaptureConfig
@@ -541,6 +542,7 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
     public func setPreviewMirrored(_ mirrored: Bool) {
         if config.isLoggingEnabled { logger.info("Setting preview mirrored: \(mirrored)") }
         internalPreviewView.transform = mirrored ? CGAffineTransform(scaleX: -1.0, y: 1.0) : .identity
+        isMirror = mirrored
     }
 
     // MARK: - Camera Type Management

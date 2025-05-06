@@ -12,10 +12,10 @@ extension EsAction {
         static let sdp = "answer"
         static let ice = "HuanCapture_ICE"
         static let state = "HuanCapture"
-        static let camera = "HuanCapture_Camera"
-        static let mirrored = "HuanCapture_Mirrored"
+        static let camera = "switchCamera"
+        static let mirrored = "switchMirror"
         static let backCameraAll = "HuanCapture_BackCameraAll"
-        static let backCamera = "HuanCapture_BackCamera"
+        static let backCamera = "switchRegular"
     }
     
     static func makeHuanCaptureBackCameraAll(cameras: [CameraType]) -> EsAction {
@@ -60,11 +60,14 @@ extension HuanCaptureManager {
             case EsAction.EsEventName.state:
                 self.handleEsStateEvent(event.args as? String)
             case EsAction.EsEventName.camera:
-                self.handleEsCameraEvent(event.args as? String)
+//                self.handleEsCameraEvent(event.args as? String)
+                switchCamera()
             case EsAction.EsEventName.mirrored:
-                self.handleEsMirroredEvent(event.args as? String)
+//                self.handleEsMirroredEvent(event.args as? String)
+                setPreviewMirrored(isMirror ? false : true)
             case EsAction.EsEventName.backCamera:
-                self.handleEsBackCameraEvent(event.args as? String)
+//                self.handleEsBackCameraEvent(event.args as? String)
+                switchBackCameraType()
             case EsAction.EsEventName.backCameraAll:
                 if self.config.isLoggingEnabled { self.esLogger.info("Received BackCameraAll event (usually sent from phone), ignoring.") }
             default:
