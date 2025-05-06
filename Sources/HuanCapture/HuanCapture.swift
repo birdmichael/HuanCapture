@@ -14,6 +14,23 @@ import SwiftUI
 import es_cast_client_ios
 #endif
 
+struct PrintLog {
+    func info(_ message: String) {
+        print(message)
+    }
+    
+    func warning(_ message: String) {
+        print(message)
+    }
+    
+    func error(_ message: String) {
+        print(message)
+    }
+    func debug(_ message: String) {
+        print(message)
+    }
+}
+
 public enum CameraType: RawRepresentable { // Ensure RawRepresentable conformance here or in the extension
     public typealias RawValue = String
 

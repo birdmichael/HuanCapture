@@ -3,16 +3,6 @@ import Foundation
 import OSLog
 import es_cast_client_ios
 
-struct PrintLog {
-    func info(_ message: String) {
-        print("message")
-    }
-    
-    func warning(_ message: String) {
-        print("message")
-    }
-}
-
 class EsSignalingServer: SignalingServerProtocol {
     weak var delegate: SignalingServerDelegate?
     weak var manager: HuanCaptureManager?
