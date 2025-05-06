@@ -39,7 +39,6 @@ extension HuanCaptureManager {
          Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.huancapture", category: "HuanCapture+Es")
     }
 
-#if canImport(es_cast_client_ios)
     internal func setupEsSignaling(device: EsDevice) {
         let esSignaler = EsSignalingServer(device: device, isLoggingEnabled: config.isLoggingEnabled, manager: self)
         esSignaler.delegate = self
@@ -73,7 +72,6 @@ extension HuanCaptureManager {
             }
         }
     }
-    #endif
 
     public func esSetAnswer(sdp: String) {
          if config.isLoggingEnabled { esLogger.info("Setting Answer SDP received via ES channel.") }

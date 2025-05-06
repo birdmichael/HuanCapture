@@ -36,16 +36,15 @@ struct ContentView: View {
     @StateObject private var captureManager: HuanCaptureManager
     @EnvironmentObject var store: Store
 
-    private var config: HuanCaptureConfig
+//    private var config: HuanCaptureConfig
 
     @State private var isMirrored = false
     @State private var showControls = false
     @State private var logMessages: [LogEntry] = []
     private let maxLogEntries = 100
 
-    init(config: HuanCaptureConfig) {
-        self.config = config
-        _captureManager = StateObject(wrappedValue: HuanCaptureManager(config: config))
+    init(device: EsDevice) {
+        _captureManager = StateObject(wrappedValue: HuanCaptureManager(config: .init(signalingModeInput: .esMessenger(device))))
     }
 
     var body: some View {
@@ -79,7 +78,7 @@ struct ContentView: View {
             ControlsSheetView(captureManager: captureManager,
                               isMirrored: $isMirrored,
                               logMessages: $logMessages,
-                              webSocketPort: captureManager.config.signalingMode == .webSocket ? config.webSocketPort : nil)
+                              webSocketPort: nil)
         }
         .onReceive(captureManager.$connectionState) { newState in
             log(.info, "WebRTC 状态: \(newState.chineseDescription)")

@@ -7,6 +7,7 @@
 
 import SwiftUI
 import es_cast_client_ios
+import HuanCapture
 
 @main
 struct EsDemoApp: App {
@@ -15,7 +16,7 @@ struct EsDemoApp: App {
         WindowGroup {
             Group {
                 if store.showCapture {
-                    ContentView(config: .init(signalingModeInput: .esMessenger(store.selectDeive!)))
+                    ContentView(device: store.selectDeive!)
                 } else {
                     DeviceView()
                 }

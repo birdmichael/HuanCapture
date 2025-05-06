@@ -12,8 +12,8 @@
 		802A2A582DB9265D00F88F2A /* HuanCapture in Frameworks */ = {isa = PBXBuildFile; productRef = 802A2A572DB9265D00F88F2A /* HuanCapture */; };
 		802A2A5B2DB926CF00F88F2A /* HuanCapture in Frameworks */ = {isa = PBXBuildFile; productRef = 802A2A5A2DB926CF00F88F2A /* HuanCapture */; };
 		802A2A6A2DBA0CF700F88F2A /* HuanCapture in Frameworks */ = {isa = PBXBuildFile; productRef = 802A2A692DBA0CF700F88F2A /* HuanCapture */; };
-		8097DC882DC9F0F50013E750 /* es-cast-client-ios in Frameworks */ = {isa = PBXBuildFile; productRef = 8097DC872DC9F0F50013E750 /* es-cast-client-ios */; };
-		80FA1D932DBFD0F20040B8F3 /* HuanCapture in Frameworks */ = {isa = PBXBuildFile; productRef = 80FA1D922DBFD0F20040B8F3 /* HuanCapture */; };
+		8097DC982DC9FB3D0013E750 /* HuanCapture in Frameworks */ = {isa = PBXBuildFile; productRef = 8097DC972DC9FB3D0013E750 /* HuanCapture */; };
+		8097DC9A2DC9FB450013E750 /* es-cast-client-ios in Frameworks */ = {isa = PBXBuildFile; productRef = 8097DC992DC9FB450013E750 /* es-cast-client-ios */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -51,8 +51,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				8097DC882DC9F0F50013E750 /* es-cast-client-ios in Frameworks */,
-				80FA1D932DBFD0F20040B8F3 /* HuanCapture in Frameworks */,
+				8097DC9A2DC9FB450013E750 /* es-cast-client-ios in Frameworks */,
+				8097DC982DC9FB3D0013E750 /* HuanCapture in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -132,8 +132,8 @@
 			);
 			name = EsDemo;
 			packageProductDependencies = (
-				80FA1D922DBFD0F20040B8F3 /* HuanCapture */,
-				8097DC872DC9F0F50013E750 /* es-cast-client-ios */,
+				8097DC972DC9FB3D0013E750 /* HuanCapture */,
+				8097DC992DC9FB450013E750 /* es-cast-client-ios */,
 			);
 			productName = EsDemo;
 			productReference = 80FA1D812DBFCE6C0040B8F3 /* EsDemo.app */;
@@ -530,14 +530,15 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = HuanCapture;
 		};
-		8097DC872DC9F0F50013E750 /* es-cast-client-ios */ = {
+		8097DC972DC9FB3D0013E750 /* HuanCapture */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 80FA1D912DBFD0F20040B8F3 /* XCLocalSwiftPackageReference "../HuanCapture" */;
+			productName = HuanCapture;
+		};
+		8097DC992DC9FB450013E750 /* es-cast-client-ios */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 8097DC862DC9F0F50013E750 /* XCRemoteSwiftPackageReference "es-cast-client-ios" */;
 			productName = "es-cast-client-ios";
-		};
-		80FA1D922DBFD0F20040B8F3 /* HuanCapture */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = HuanCapture;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

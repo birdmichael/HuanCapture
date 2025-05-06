@@ -1,7 +1,7 @@
 #if canImport(es_cast_client_ios)
-import es_cast_client_ios
 import Foundation
 import OSLog
+import es_cast_client_ios
 
 class EsSignalingServer: SignalingServerProtocol {
     weak var delegate: SignalingServerDelegate?
@@ -133,5 +133,4 @@ extension EsSignalingServer: MessengerCallback {
         self.manager?.handleEsEvent(event)
     }
 }
-
 #endif
