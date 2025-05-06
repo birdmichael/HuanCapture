@@ -9,9 +9,11 @@ let package = Package(
     products: [
         .library(
             name: "HuanCapture",
-            targets: ["HuanCapture"]), 
+            targets: ["HuanCapture"]),
     ],
-    dependencies: [],
+    dependencies: [
+        .package(url: "https://github.com/hanliang-tech/es-cast-client-ios", from: "0.1.5")
+    ],
     targets: [
         .binaryTarget(
             name: "WebRTC",
@@ -21,7 +23,8 @@ let package = Package(
         .target(
             name: "HuanCapture",
             dependencies: [
-                .target(name: "WebRTC")
+                .target(name: "WebRTC"),
+                .product(name: "es-cast-client-ios", package: "es-cast-client-ios")
             ],
             path: "Sources/HuanCapture"
         )

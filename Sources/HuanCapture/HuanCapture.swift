@@ -10,9 +10,6 @@ import OSLog
 import Combine
 import SwiftUI
 
-#if canImport(es_cast_client_ios)
-import es_cast_client_ios
-#endif
 
 struct PrintLog {
     func info(_ message: String) {
@@ -148,7 +145,7 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
             self.webSocketStatus = .idle
             if config.isLoggingEnabled { logger.info("Using WebSocket signaling mode.") }
             
-        #if canImport(es_cast_client_ios)
+        
         case .esMessenger(let device):
             self.webSocketStatus = .notApplicable
             if config.isLoggingEnabled { logger.info("Using EsMessenger signaling mode.") }
@@ -157,7 +154,7 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
             self.webSocketStatus = .notApplicable
             
             setupEsSignaling(device: device)
-            #endif
+          
             
         case .custom:
             self.signalingServer = nil
@@ -934,11 +931,9 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
                 if self.config.isLoggingEnabled { self.logger.info("WebRTC Connection Established.") }
                 self.isStoppingManually = false
                 self.captureError = nil
-                #if canImport(es_cast_client_ios)
                 if case .esMessenger = self.config.signalingMode {
                      self.sendAvailableBackCamerasToEsDevice()
                 }
-                #endif
 
             case .disconnected:
                 if wasStopping {
@@ -986,7 +981,6 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
         } else {
              DispatchQueue.main.async { [weak self] in
                  guard let self = self else { return }
-                 #if canImport(es_cast_client_ios)
                  if self.config.signalingMode == .custom {
                      if self.config.isLoggingEnabled { self.logger.info("Sending ICE candidate via PassthroughSubject for custom mode.") }
                      self.iceCandidateSubject.send(candidate)
@@ -995,14 +989,6 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
                  } else if self.config.signalingMode == .webSocket {
                       if self.config.isLoggingEnabled { self.logger.warning("Generated ICE candidate in webSocket mode but signalingServer is nil.") }
                  }
-                 #else
-                 if self.config.signalingMode == .custom {
-                     if self.config.isLoggingEnabled { self.logger.info("Sending ICE candidate via PassthroughSubject for custom mode (es_cast_client_ios not imported).") }
-                     self.iceCandidateSubject.send(candidate)
-                 } else {
-                     if self.config.isLoggingEnabled { self.logger.warning("Generated ICE candidate but no signaling server available and not in custom mode (es_cast_client_ios not imported).") }
-                 }
-                 #endif
              }
         }
     }

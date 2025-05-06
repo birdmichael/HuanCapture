@@ -1,4 +1,4 @@
-#if canImport(es_cast_client_ios)
+
 import Foundation
 import OSLog
 import es_cast_client_ios
@@ -135,4 +135,3 @@ extension EsSignalingServer: MessengerCallback {
         self.manager?.handleEsEvent(event)
     }
 }
-#endif

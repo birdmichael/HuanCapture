@@ -1,23 +1,18 @@
 import Foundation
-#if canImport(es_cast_client_ios)
 import es_cast_client_ios
-#endif
 
 public enum SignalingMode {
     case webSocket
-    #if canImport(es_cast_client_ios)
     case esMessenger(EsDevice)
-    #endif
     case custom
 
     public static func == (lhs: SignalingMode, rhs: SignalingMode) -> Bool {
         switch (lhs, rhs) {
         case (.webSocket, .webSocket):
             return true
-#if canImport(es_cast_client_ios)
         case let (.esMessenger(d1), .esMessenger(d2)):
              return d1.id == d2.id
-        #endif
+      
         case (.custom, .custom):
             return true
         default:

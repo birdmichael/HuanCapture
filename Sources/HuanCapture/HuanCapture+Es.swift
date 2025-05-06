@@ -1,4 +1,3 @@
-#if canImport(es_cast_client_ios)
 import Foundation
 import es_cast_client_ios
 import OSLog
@@ -234,4 +233,3 @@ extension EsEvent {
     }
 }
 
-#endif
