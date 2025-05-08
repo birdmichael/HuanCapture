@@ -13,17 +13,37 @@
 		802A2A5B2DB926CF00F88F2A /* HuanCapture in Frameworks */ = {isa = PBXBuildFile; productRef = 802A2A5A2DB926CF00F88F2A /* HuanCapture */; };
 		802A2A6A2DBA0CF700F88F2A /* HuanCapture in Frameworks */ = {isa = PBXBuildFile; productRef = 802A2A692DBA0CF700F88F2A /* HuanCapture */; };
 		8097DC982DC9FB3D0013E750 /* HuanCapture in Frameworks */ = {isa = PBXBuildFile; productRef = 8097DC972DC9FB3D0013E750 /* HuanCapture */; };
+		8097DD372DCC67520013E750 /* HuanCapture in Frameworks */ = {isa = PBXBuildFile; productRef = 8097DD362DCC67520013E750 /* HuanCapture */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		805E14D62DB7F652004CF67D /* Demo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Demo.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		8097DD1C2DCC673C0013E750 /* OC_Demo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OC_Demo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		80FA1D812DBFCE6C0040B8F3 /* EsDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EsDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		8097DD342DCC673D0013E750 /* Exceptions for "OC_Demo" folder in "OC_Demo" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 8097DD1B2DCC673C0013E750 /* OC_Demo */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		805E14D72DB7F652004CF67D /* Demo */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Demo;
+			sourceTree = "<group>";
+		};
+		8097DD1D2DCC673C0013E750 /* OC_Demo */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				8097DD342DCC673D0013E750 /* Exceptions for "OC_Demo" folder in "OC_Demo" target */,
+			);
+			path = OC_Demo;
 			sourceTree = "<group>";
 		};
 		80FA1D822DBFCE6C0040B8F3 /* EsDemo */ = {
@@ -46,6 +66,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		8097DD192DCC673C0013E750 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8097DD372DCC67520013E750 /* HuanCapture in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		80FA1D7E2DBFCE6C0040B8F3 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -62,6 +90,7 @@
 			children = (
 				805E14D72DB7F652004CF67D /* Demo */,
 				80FA1D822DBFCE6C0040B8F3 /* EsDemo */,
+				8097DD1D2DCC673C0013E750 /* OC_Demo */,
 				805E14E12DB7F696004CF67D /* Frameworks */,
 				805E14C92DB7F630004CF67D /* Products */,
 			);
@@ -72,6 +101,7 @@
 			children = (
 				805E14D62DB7F652004CF67D /* Demo.app */,
 				80FA1D812DBFCE6C0040B8F3 /* EsDemo.app */,
+				8097DD1C2DCC673C0013E750 /* OC_Demo.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -113,6 +143,29 @@
 			productReference = 805E14D62DB7F652004CF67D /* Demo.app */;
 			productType = "com.apple.product-type.application";
 		};
+		8097DD1B2DCC673C0013E750 /* OC_Demo */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8097DD352DCC673D0013E750 /* Build configuration list for PBXNativeTarget "OC_Demo" */;
+			buildPhases = (
+				8097DD182DCC673C0013E750 /* Sources */,
+				8097DD192DCC673C0013E750 /* Frameworks */,
+				8097DD1A2DCC673C0013E750 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				8097DD1D2DCC673C0013E750 /* OC_Demo */,
+			);
+			name = OC_Demo;
+			packageProductDependencies = (
+				8097DD362DCC67520013E750 /* HuanCapture */,
+			);
+			productName = OC_Demo;
+			productReference = 8097DD1C2DCC673C0013E750 /* OC_Demo.app */;
+			productType = "com.apple.product-type.application";
+		};
 		80FA1D802DBFCE6C0040B8F3 /* EsDemo */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 80FA1D8B2DBFCE6D0040B8F3 /* Build configuration list for PBXNativeTarget "EsDemo" */;
@@ -149,6 +202,10 @@
 					805E14D52DB7F652004CF67D = {
 						CreatedOnToolsVersion = 16.3;
 					};
+					8097DD1B2DCC673C0013E750 = {
+						CreatedOnToolsVersion = 16.3;
+						LastSwiftMigration = 1630;
+					};
 					80FA1D802DBFCE6C0040B8F3 = {
 						CreatedOnToolsVersion = 16.3;
 					};
@@ -173,12 +230,20 @@
 			targets = (
 				805E14D52DB7F652004CF67D /* Demo */,
 				80FA1D802DBFCE6C0040B8F3 /* EsDemo */,
+				8097DD1B2DCC673C0013E750 /* OC_Demo */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		805E14D42DB7F652004CF67D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8097DD1A2DCC673C0013E750 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -196,6 +261,13 @@
 
 /* Begin PBXSourcesBuildPhase section */
 		805E14D22DB7F652004CF67D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8097DD182DCC673C0013E750 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -397,6 +469,69 @@
 			};
 			name = Release;
 		};
+		8097DD322DCC673D0013E750 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = SUKY3PD99D;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = OC_Demo/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "使用摄像头";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
+				INFOPLIST_KEY_UIMainStoryboardFile = Main;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.birdmichael.wechat.OC-Demo";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "OC_Demo/OC_Demo-Bridging-Header.h";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		8097DD332DCC673D0013E750 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = SUKY3PD99D;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = OC_Demo/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "使用摄像头";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
+				INFOPLIST_KEY_UIMainStoryboardFile = Main;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.birdmichael.wechat.OC-Demo";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "OC_Demo/OC_Demo-Bridging-Header.h";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		80FA1D892DBFCE6D0040B8F3 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -476,6 +611,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		8097DD352DCC673D0013E750 /* Build configuration list for PBXNativeTarget "OC_Demo" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8097DD322DCC673D0013E750 /* Debug */,
+				8097DD332DCC673D0013E750 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		80FA1D8B2DBFCE6D0040B8F3 /* Build configuration list for PBXNativeTarget "EsDemo" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -516,6 +660,11 @@
 			productName = HuanCapture;
 		};
 		8097DC972DC9FB3D0013E750 /* HuanCapture */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 80FA1D912DBFD0F20040B8F3 /* XCLocalSwiftPackageReference "../HuanCapture" */;
+			productName = HuanCapture;
+		};
+		8097DD362DCC67520013E750 /* HuanCapture */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 80FA1D912DBFD0F20040B8F3 /* XCLocalSwiftPackageReference "../HuanCapture" */;
 			productName = HuanCapture;

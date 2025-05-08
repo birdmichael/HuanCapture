@@ -8,7 +8,6 @@ class EsSignalingServer: SignalingServerProtocol {
     weak var manager: HuanCaptureManager?
     private let targetDevice: EsDevice
     private let isLoggingEnabled: Bool
-//    private let logger: Logger
     private let logger: PrintLog
 
     private let encoder = JSONEncoder()
@@ -30,7 +29,6 @@ class EsSignalingServer: SignalingServerProtocol {
     init(device: EsDevice, isLoggingEnabled: Bool, manager: HuanCaptureManager? = nil) {
         self.targetDevice = device
         self.isLoggingEnabled = isLoggingEnabled
-//        self.logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.huancapture", category: "EsSignalingServer")
         self.logger = PrintLog()
         self.manager = manager
         if isLoggingEnabled { logger.info("EsSignalingServer initialized for device: \(device.deviceName) (\(device.deviceIp))") }
