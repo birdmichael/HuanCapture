@@ -44,7 +44,7 @@ struct ContentView: View {
     private let maxLogEntries = 100
 
     init(device: EsDevice) {
-        _captureManager = StateObject(wrappedValue: HuanCaptureManager(config: .init(signalingModeInput: .esMessenger(device))))
+        _captureManager = StateObject(wrappedValue: HuanCaptureManager(frameProvider: CameraFrameProvider(), config: .init(signalingModeInput: .esMessenger(device))))
     }
 
     var body: some View {

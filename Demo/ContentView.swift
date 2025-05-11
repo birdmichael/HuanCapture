@@ -44,7 +44,7 @@ struct ContentView: View {
     
     init(config: HuanCaptureConfig = HuanCaptureConfig.default) {
         self.config = config
-        _captureManager = StateObject(wrappedValue: HuanCaptureManager(config: config))
+        _captureManager = StateObject(wrappedValue: HuanCaptureManager(frameProvider: CameraFrameProvider(), config: config))
     }
 
     var body: some View {

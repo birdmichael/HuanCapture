@@ -97,7 +97,7 @@ import UIKit
             huanCaptureManager?.stopStreaming()
             huanCaptureManager = nil
         }
-        self.huanCaptureManager = HuanCaptureManager(config: .init(signalingModeInput: .esMessenger(targetOCDevice.originalDevice)))
+        self.huanCaptureManager = HuanCaptureManager(frameProvider: CameraFrameProvider(), config: .init(signalingModeInput: .esMessenger(targetOCDevice.originalDevice)))
     }
 
     @objc public func startPublishing() {

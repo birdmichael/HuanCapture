@@ -88,7 +88,7 @@ public enum PublicWebSocketStatus {
     case notApplicable
 }
 
-public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampleBufferDelegate, RTCPeerConnectionDelegate, SignalingServerDelegate, WebSocketSignalingServerStateDelegate, ObservableObject {
+public class HuanCaptureManager: RTCVideoCapturer, RTCPeerConnectionDelegate, SignalingServerDelegate, WebSocketSignalingServerStateDelegate, VideoFrameProviderDelegate, ObservableObject {
 
     @Published public private(set) var connectionState: RTCIceConnectionState = .new
     @Published public private(set) var localSDP: RTCSessionDescription?
@@ -96,9 +96,13 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
     @Published public private(set) var currentCameraPosition: AVCaptureDevice.Position = .back
     @Published public private(set) var currentCameraType: CameraType = .wideAngle
     @Published public private(set) var availableBackCameraTypes: [CameraType] = []
-    @Published public var deviceOrientation: UIDeviceOrientation = .portrait
+    @Published public var deviceOrientation: UIDeviceOrientation = .portrait {
+        didSet {
+            cameraControlProvider?.deviceOrientation = deviceOrientation
+        }
+    }
     @Published public private(set) var webSocketStatus: PublicWebSocketStatus = .idle
-    @Published public private(set) var isMirror: Bool = false
+    @Published public private(set) var isPreviewMirrored: Bool = false
     public let iceCandidateSubject = PassthroughSubject<RTCIceCandidate, Never>()
     public let previewView: UIView
     public private(set) var config: HuanCaptureConfig
@@ -109,65 +113,59 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
     private var videoSource: RTCVideoSource!
     private var videoTrack: RTCVideoTrack!
     private let rtcAudioSession = RTCAudioSession.sharedInstance()
-    private var captureSession: AVCaptureSession!
-    private var videoDeviceInput: AVCaptureDeviceInput?
-    private let videoDataOutput = AVCaptureVideoDataOutput()
-    private let videoOutputQueue = DispatchQueue(label: "com.huancapture.videoOutputQueue")
     internal let logger: PrintLog
     private var isStoppingManually = false
     internal var signalingServer: SignalingServerProtocol?
-    private var lastLoggedOrientationWarning: (AVCaptureDevice.Position, UIDeviceOrientation)? = nil
-
-    public var isLoggingEnabled: Bool {
-        get { return config.isLoggingEnabled }
-    }
     
-    @available(*, deprecated, message: "Use init(config:) instead to specify configuration.")
-    public convenience override init() {
-        self.init(config: HuanCaptureConfig.default)
+    private let frameProvider: VideoFrameProvider
+    private var cameraControlProvider: CameraControlProvider? {
+        frameProvider as? CameraControlProvider
+    }
+    private var externalFrameConsumer: ExternalFrameProvider? {
+        frameProvider as? ExternalFrameProvider
     }
 
-    public init(config: HuanCaptureConfig = HuanCaptureConfig.default) {
+    public var isLoggingEnabled: Bool { config.isLoggingEnabled }
+
+    public init(frameProvider: VideoFrameProvider, config: HuanCaptureConfig = HuanCaptureConfig.default) {
+        self.frameProvider = frameProvider
         self.config = config
         self.logger = PrintLog()
         self.previewView = internalPreviewView
         super.init()
-        if config.isLoggingEnabled { logger.info("HuanCapture initializing with config: Mode=\(String(describing: config.signalingMode)), Logging=\(config.isLoggingEnabled)") }
+        if config.isLoggingEnabled { logger.info("HuanCapture initializing. Provider: \(type(of: frameProvider)), Logging: \(config.isLoggingEnabled)") }
 
         internalPreviewView.videoContentMode = .scaleAspectFill
+
+        self.frameProvider.delegate = self
+
+        if let camProvider = self.cameraControlProvider {
+            self.currentCameraPosition = camProvider.currentCameraPosition
+            self.currentCameraType = camProvider.currentCameraType
+            self.availableBackCameraTypes = camProvider.availableBackCameraTypes
+            self.isPreviewMirrored = camProvider.isPreviewMirrored
+            camProvider.deviceOrientation = self.deviceOrientation
+        }
 
         switch config.signalingMode {
         case .webSocket:
             let wsSignaler = WebSocketSignalingServer(port: config.webSocketPort, isLoggingEnabled: config.isLoggingEnabled)
-            wsSignaler.delegate = self
-            wsSignaler.internalStateDelegate = self
-            self.signalingServer = wsSignaler
-            self.webSocketStatus = .idle
-            if config.isLoggingEnabled { logger.info("Using WebSocket signaling mode.") }
-            
+            wsSignaler.delegate = self; wsSignaler.internalStateDelegate = self; self.signalingServer = wsSignaler; self.webSocketStatus = .idle
+            if config.isLoggingEnabled { logger.info("Using WebSocket signaling.") }
         
         case .esMessenger(let device):
             self.webSocketStatus = .notApplicable
-            if config.isLoggingEnabled { logger.info("Using EsMessenger signaling mode.") }
-        
-            if config.isLoggingEnabled { logger.error("EsMessenger mode configured but es_cast_client_ios not imported. Falling back to custom mode.") }
-            self.webSocketStatus = .notApplicable
+            if config.isLoggingEnabled { logger.info("Using EsMessenger signaling.") }
             
             setupEsSignaling(device: device)
           
-            
         case .custom:
-            self.signalingServer = nil
-            self.webSocketStatus = .notApplicable
-            if config.isLoggingEnabled { logger.info("Using custom signaling mode.") }
-        default:
-             if config.isLoggingEnabled { logger.warning("Unknown signaling mode encountered during init. Defaulting to custom.") }
-             self.signalingServer = nil
-             self.webSocketStatus = .notApplicable
+            self.signalingServer = nil; self.webSocketStatus = .notApplicable
+            if config.isLoggingEnabled { logger.info("Using custom signaling.") }
         }
 
         setupWebRTC()
-        setupAVFoundation()
+
         if config.isLoggingEnabled { logger.info("HuanCapture initialized.") }
     }
 
@@ -212,111 +210,6 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
         } catch {
             if config.isLoggingEnabled { logger.error("Error configuring RTCAudioSession: \(error.localizedDescription)") }
         }
-    }
-
-    private func setupAVFoundation() {
-        if config.isLoggingEnabled { logger.debug("Setting up AVFoundation...") }
-        captureSession = AVCaptureSession()
-        captureSession.sessionPreset = .hd4K3840x2160
-
-        currentCameraPosition = .back
-        currentCameraType = .wideAngle
-        
-
-        detectAvailableBackCameraTypes()
-        guard let videoDevice = findCamera(position: currentCameraPosition, type: currentCameraType) else {
-            if config.isLoggingEnabled { logger.error("Failed to find back camera.") }
-            DispatchQueue.main.async { [weak self] in
-                 guard let self = self else { return }
-                 self.captureError = NSError(domain: "HuanCaptureError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Back camera not found"])
-            }
-            return
-        }
-
-        do {
-            videoDeviceInput = try AVCaptureDeviceInput(device: videoDevice)
-        } catch {
-            if config.isLoggingEnabled { logger.error("Failed to create AVCaptureDeviceInput: \(error.localizedDescription)") }
-            DispatchQueue.main.async { [weak self] in
-                 guard let self = self else { return }
-                 self.captureError = error
-            }
-            return
-        }
-
-        if let input = videoDeviceInput, captureSession.canAddInput(input) {
-            captureSession.addInput(input)
-            if config.isLoggingEnabled { logger.debug("AVCaptureDeviceInput added.") }
-        } else {
-            if config.isLoggingEnabled { logger.error("Could not add video device input to capture session.") }
-            DispatchQueue.main.async { [weak self] in
-                 guard let self = self else { return }
-                 self.captureError = NSError(domain: "HuanCaptureError", code: 2, userInfo: [NSLocalizedDescriptionKey: "Could not add video input"])
-            }
-            return
-        }
-
-        videoDataOutput.setSampleBufferDelegate(self, queue: videoOutputQueue)
-        videoDataOutput.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange]
-        if captureSession.canAddOutput(videoDataOutput) {
-            captureSession.addOutput(videoDataOutput)
-            if config.isLoggingEnabled { logger.debug("AVCaptureVideoDataOutput added.") }
-        } else {
-            if config.isLoggingEnabled { logger.error("Could not add video data output to capture session.") }
-            DispatchQueue.main.async { [weak self] in
-                 guard let self = self else { return }
-                 self.captureError = NSError(domain: "HuanCaptureError", code: 3, userInfo: [NSLocalizedDescriptionKey: "Could not add video output"])
-            }
-            return
-        }
-
-        if config.isLoggingEnabled { logger.debug("AVFoundation setup complete.") }
-    }
-
-    private func findCamera(position: AVCaptureDevice.Position, type: CameraType? = nil) -> AVCaptureDevice? {
-        if config.isLoggingEnabled { 
-            if let type = type {
-                logger.debug("Searching for camera with position: \(position.rawValue) and type: \(type.localizedName)")
-            } else {
-                logger.debug("Searching for camera with position: \(position.rawValue)")
-            }
-        }
-
-        #if os(iOS)
-        let deviceTypes: [AVCaptureDevice.DeviceType] = [.builtInWideAngleCamera, .builtInTelephotoCamera, .builtInUltraWideCamera]
-        #elseif os(macOS)
-        let deviceTypes: [AVCaptureDevice.DeviceType] = [.builtInWideAngleCamera]
-        #else
-        let deviceTypes: [AVCaptureDevice.DeviceType] = []
-        #endif
-
-        let discoverySession = AVCaptureDevice.DiscoverySession(deviceTypes: deviceTypes, mediaType: .video, position: position)
-        
-        // 如果指定了相机类型，则优先查找该类型
-        if let type = type {
-            let targetDeviceType = type.deviceType
-            if let targetCamera = discoverySession.devices.first(where: { $0.deviceType == targetDeviceType }) {
-                if config.isLoggingEnabled { logger.info("Found camera of requested type: \(targetCamera.localizedName)") }
-                return targetCamera
-            } else {
-                if config.isLoggingEnabled { logger.warning("Camera of type \(type.localizedName) not found, falling back to default") }
-            }
-        }
-        
-        // 如果没有指定类型或找不到指定类型，则优先选择广角相机
-        if let wideAngle = discoverySession.devices.first(where: { $0.deviceType == .builtInWideAngleCamera }) {
-             if config.isLoggingEnabled { logger.info("Found built-in wide angle camera: \(wideAngle.localizedName)") }
-            return wideAngle
-        }
-
-        // 如果没有找到广角相机，则返回第一个可用的相机
-        let device = discoverySession.devices.first
-        if let device = device {
-             if config.isLoggingEnabled { logger.info("Found camera: \(device.localizedName)") }
-        } else {
-             if config.isLoggingEnabled { logger.warning("Camera not found for position: \(position.rawValue)") }
-        }
-        return device
     }
 
     // MARK: - Public Control Methods
@@ -400,7 +293,7 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
 
                           self.signalingServer?.sendOffer(sdp: sdp.sdp)
                           
-                          self.startCaptureSession()
+                          self.frameProvider.startProviding()
                       }
                  }
              }
@@ -408,7 +301,7 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
     }
 
     public func stopStreaming() {
-        guard peerConnection != nil || captureSession.isRunning else {
+        guard peerConnection != nil || frameProvider.isRunning else {
             if config.isLoggingEnabled { logger.info("Streaming already stopped or not running.") }
             return
         }
@@ -418,7 +311,7 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
 
         signalingServer?.stop()
 
-        stopCaptureSession()
+        frameProvider.stopProviding()
 
         if let pc = peerConnection {
             pc.close()
@@ -485,426 +378,66 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
     }
 
     public func switchCamera() {
-        if config.isLoggingEnabled { logger.info("Attempting to switch camera...") }
-        guard let captureSession = self.captureSession else {
-            if config.isLoggingEnabled { logger.warning("Capture session not initialized.") }
+        guard let camControls = self.cameraControlProvider else {
+            if config.isLoggingEnabled { logger.warning("switchCamera called but not in camera provider mode.") }
             return
         }
-
-        videoOutputQueue.async { [weak self] in
-            guard let self = self else { return }
-
-            let targetPosition: AVCaptureDevice.Position = (self.currentCameraPosition == .back) ? .front : .back
-            if self.config.isLoggingEnabled { self.logger.debug("Switching camera to position: \(targetPosition.rawValue)") }
-
-            let targetCameraType = targetPosition == .front ? .wideAngle : self.currentCameraType
-            guard let videoDevice = self.findCamera(position: targetPosition, type: targetCameraType) else {
-                if self.config.isLoggingEnabled { self.logger.error("Failed to find camera for position: \(targetPosition.rawValue)") }
-                DispatchQueue.main.async { [weak self] in
-                    guard let self = self else { return }
-                    self.captureError = NSError(domain: "HuanCaptureError", code: 9, userInfo: [NSLocalizedDescriptionKey: "Target camera not found: \(targetPosition)"])
-                }
-                return
-            }
-
-            guard let newVideoInput = try? AVCaptureDeviceInput(device: videoDevice) else {
-                if self.config.isLoggingEnabled { self.logger.error("Failed to create AVCaptureDeviceInput for the new camera.") }
-                DispatchQueue.main.async { [weak self] in
-                    guard let self = self else { return }
-                    self.captureError = NSError(domain: "HuanCaptureError", code: 10, userInfo: [NSLocalizedDescriptionKey: "Failed to create new camera input"])
-                }
-                return
-            }
-
-            captureSession.beginConfiguration()
-            defer {
-                captureSession.commitConfiguration()
-                if self.config.isLoggingEnabled { self.logger.debug("Capture session configuration committed.") }
-            }
-
-            if let currentInput = self.videoDeviceInput {
-                captureSession.removeInput(currentInput)
-                if self.config.isLoggingEnabled { self.logger.debug("Removed old camera input.") }
-            }
-
-            if captureSession.canAddInput(newVideoInput) {
-                captureSession.addInput(newVideoInput)
-                self.videoDeviceInput = newVideoInput
-                DispatchQueue.main.async {
-                     self.currentCameraPosition = targetPosition
-                     if targetPosition == .front {
-                         self.currentCameraType = .wideAngle
-                     }
-                }
-                if self.config.isLoggingEnabled { self.logger.info("Successfully switched camera to \(targetPosition.rawValue).") }
-            } else {
-                if self.config.isLoggingEnabled { self.logger.error("Could not add new camera input to capture session.") }
-                if let currentInput = self.videoDeviceInput, captureSession.canAddInput(currentInput) {
-                    captureSession.addInput(currentInput)
-                    if self.config.isLoggingEnabled { self.logger.warning("Re-added previous camera input after failing to add new one.") }
-                } else {
-                    if self.config.isLoggingEnabled { self.logger.error("Failed to re-add previous input either. Capture session might be broken.") }
-                }
-                 DispatchQueue.main.async { [weak self] in
-                      guard let self = self else { return }
-                      self.captureError = NSError(domain: "HuanCaptureError", code: 11, userInfo: [NSLocalizedDescriptionKey: "Could not add new camera input"])
-                 }
-            }
-        }
+        camControls.switchCamera()
     }
 
     public func setPreviewMirrored(_ mirrored: Bool) {
-        if config.isLoggingEnabled { logger.info("Setting preview mirrored: \(mirrored)") }
+        if config.isLoggingEnabled { logger.info("HuanCaptureManager: Setting preview mirrored: \(mirrored)") }
         internalPreviewView.transform = mirrored ? CGAffineTransform(scaleX: -1.0, y: 1.0) : .identity
-        isMirror = mirrored
+        cameraControlProvider?.setPreviewMirrored(mirrored)
     }
 
     // MARK: - Camera Type Management
     
     @discardableResult
     public func switchBackCameraType() -> CameraType? {
-        if let nextType = getNextAvailableCameraType() {
-            return switchToBackCameraType(nextType)
+        guard let camControls = self.cameraControlProvider else {
+            if config.isLoggingEnabled { logger.warning("switchBackCameraType called but not in camera provider mode.") }
+            return nil
         }
-        return nil
+        return camControls.switchBackCameraType()
     }
     
     @discardableResult
     public func switchToBackCameraType(_ type: CameraType) -> CameraType? {
-        if config.isLoggingEnabled { logger.info("Attempting to switch to specific back camera type: \(type.localizedName)...") }
-        
-        guard currentCameraPosition == .back else {
-            if config.isLoggingEnabled { logger.warning("Cannot switch camera type when using front camera.") }
+        guard let camControls = self.cameraControlProvider else {
+            if config.isLoggingEnabled { logger.warning("switchToBackCameraType called but not in camera provider mode.") }
             return nil
         }
-        
-        guard availableBackCameraTypes.contains(type) else {
-            if config.isLoggingEnabled { logger.warning("Requested camera type \(type.localizedName) is not available on this device.") }
-            return nil
-        }
-        
-        if currentCameraType == type {
-            if config.isLoggingEnabled { logger.info("Already using camera type: \(type.localizedName)") }
-            return currentCameraType
-        }
-        
-        guard let captureSession = self.captureSession else {
-            if config.isLoggingEnabled { logger.warning("Capture session not initialized.") }
-            return nil
-        }
-        
-        var result: CameraType? = nil
-        let semaphore = DispatchSemaphore(value: 0)
-        
-        videoOutputQueue.async { [weak self] in
-            guard let self = self else { 
-                semaphore.signal()
-                return 
-            }
-            
-            if self.config.isLoggingEnabled { self.logger.debug("Switching camera type to: \(type.localizedName)") }
-            
-            guard let videoDevice = self.findCamera(position: .back, type: type) else {
-                if self.config.isLoggingEnabled { self.logger.error("Could not find camera device for type \(type.localizedName)") }
-                semaphore.signal()
-                return
-            }
-            
-            if self.switchToCamera(device: videoDevice, type: type) {
-                result = type
-            }
-            semaphore.signal()
-        }
-        
-        _ = semaphore.wait(timeout: .now() + 2.0)
-        return result
-    }
-    
-    private func getNextAvailableCameraType() -> CameraType? {
-        if availableBackCameraTypes.isEmpty || availableBackCameraTypes.count == 1 {
-            if config.isLoggingEnabled { logger.warning("No multiple available back camera types") }
-            return nil
-        }
-        
-        if let currentIndex = availableBackCameraTypes.firstIndex(where: { $0 == currentCameraType }) {
-            let nextIndex = (currentIndex + 1) % availableBackCameraTypes.count
-            return availableBackCameraTypes[nextIndex]
-        } else {
-            return availableBackCameraTypes.first
-        }
-    }
-    
-    private func switchBackCameraType_legacy() {
-        if config.isLoggingEnabled { logger.info("Attempting to switch back camera type...") }
-        
-        guard currentCameraPosition == .back else {
-            if config.isLoggingEnabled { logger.warning("Cannot switch camera type when using front camera.") }
-            return
-        }
-        
-        guard let captureSession = self.captureSession else {
-            if config.isLoggingEnabled { logger.warning("Capture session not initialized.") }
-            return
-        }
-        
-        videoOutputQueue.async { [weak self] in
-            guard let self = self else { return }
-            
-            guard let nextCameraType = self.getNextAvailableCameraType() else {
-                if self.config.isLoggingEnabled { self.logger.warning("No available next camera type") }
-                return
-            }
-            
-            if self.config.isLoggingEnabled { self.logger.debug("Switching camera type to: \(nextCameraType.localizedName)") }
-            
-
-            guard let videoDevice = self.findCamera(position: .back, type: nextCameraType) else {
-                if self.config.isLoggingEnabled { self.logger.warning("Could not find camera of type \(nextCameraType.localizedName), trying next type") }
-                
-                let alternativeType: CameraType
-                if let nextTypeIndex = self.availableBackCameraTypes.firstIndex(where: { $0 == nextCameraType }),
-                   self.availableBackCameraTypes.count > 1 {
-                    let alternativeIndex = (nextTypeIndex + 1) % self.availableBackCameraTypes.count
-                    alternativeType = self.availableBackCameraTypes[alternativeIndex]
-                } else {
-                    alternativeType = .wideAngle
-                }
-                
-                guard let alternativeDevice = self.findCamera(position: .back, type: alternativeType) else {
-                    if self.config.isLoggingEnabled { self.logger.error("No alternative camera types available") }
-                    DispatchQueue.main.async { [weak self] in
-                        guard let self = self else { return }
-                        self.captureError = NSError(domain: "HuanCaptureError", code: 12, userInfo: [NSLocalizedDescriptionKey: "没有可用的其他类型摄像头"])
-                    }
-                    return
-                }
-                
-                if self.config.isLoggingEnabled { self.logger.info("Found alternative camera type: \(alternativeType.localizedName)") }
-                self.switchToCamera(device: alternativeDevice, type: alternativeType)
-                return
-            }
-            
-            self.switchToCamera(device: videoDevice, type: nextCameraType)
-        }
-    }
-    private func switchToCamera(device: AVCaptureDevice, type: CameraType) -> Bool {
-        guard let captureSession = self.captureSession else { return false }
-        
-        guard let newVideoInput = try? AVCaptureDeviceInput(device: device) else {
-            if self.config.isLoggingEnabled { self.logger.error("Failed to create AVCaptureDeviceInput for the new camera.") }
-            DispatchQueue.main.async { [weak self] in
-                guard let self = self else { return }
-                self.captureError = NSError(domain: "HuanCaptureError", code: 13, userInfo: [NSLocalizedDescriptionKey: "无法创建新摄像头输入"])
-            }
-            return false
-        }
-        
-        captureSession.beginConfiguration()
-        defer {
-            captureSession.commitConfiguration()
-            if self.config.isLoggingEnabled { self.logger.debug("Capture session configuration committed.") }
-        }
-        
-        if let currentInput = self.videoDeviceInput {
-            captureSession.removeInput(currentInput)
-            if self.config.isLoggingEnabled { self.logger.debug("Removed old camera input.") }
-        }
-        
-        if captureSession.canAddInput(newVideoInput) {
-            captureSession.addInput(newVideoInput)
-            self.videoDeviceInput = newVideoInput
-            DispatchQueue.main.async {
-                self.currentCameraType = type
-            }
-            if self.config.isLoggingEnabled { self.logger.info("Successfully switched to camera type: \(type.localizedName)") }
-            return true
-        } else {
-            if self.config.isLoggingEnabled { self.logger.error("Could not add new camera input to capture session.") }
-            if let currentInput = self.videoDeviceInput, captureSession.canAddInput(currentInput) {
-                captureSession.addInput(currentInput)
-                if self.config.isLoggingEnabled { self.logger.warning("Re-added previous camera input after failing to add new one.") }
-            } else {
-                if self.config.isLoggingEnabled { self.logger.error("Failed to re-add previous input either. Capture session might be broken.") }
-            }
-            DispatchQueue.main.async { [weak self] in
-                guard let self = self else { return }
-                self.captureError = NSError(domain: "HuanCaptureError", code: 14, userInfo: [NSLocalizedDescriptionKey: "无法添加新摄像头输入"])
-            }
-            return false
-        }
+        return camControls.switchToBackCameraType(type)
     }
     
     // MARK: - Available Camera Detection
     
-    private func detectAvailableBackCameraTypes() {
-        if config.isLoggingEnabled { logger.debug("Detecting available back camera types...") }
-        
-        var detectedTypes: [CameraType] = []
-        
-        #if os(iOS)
-        let deviceTypes: [AVCaptureDevice.DeviceType] = [.builtInWideAngleCamera, .builtInTelephotoCamera, .builtInUltraWideCamera]
-        #elseif os(macOS)
-        let deviceTypes: [AVCaptureDevice.DeviceType] = [.builtInWideAngleCamera]
-        #else
-        let deviceTypes: [AVCaptureDevice.DeviceType] = []
-        #endif
-        
-        let discoverySession = AVCaptureDevice.DiscoverySession(deviceTypes: deviceTypes, mediaType: .video, position: .back)
-        
-        if discoverySession.devices.contains(where: { $0.deviceType == .builtInWideAngleCamera }) {
-            detectedTypes.append(.wideAngle)
-            if config.isLoggingEnabled { logger.info("Device supports back wide angle camera") }
-        }
-        
-        if discoverySession.devices.contains(where: { $0.deviceType == .builtInTelephotoCamera }) {
-            detectedTypes.append(.telephoto)
-            if config.isLoggingEnabled { logger.info("Device supports back telephoto camera") }
-        }
-        
-        if discoverySession.devices.contains(where: { $0.deviceType == .builtInUltraWideCamera }) {
-            detectedTypes.append(.ultraWide)
-            if config.isLoggingEnabled { logger.info("Device supports back ultra wide camera") }
-        }
-        
-        if detectedTypes.isEmpty {
-            detectedTypes.append(.wideAngle)
-            if config.isLoggingEnabled { logger.warning("No back camera types detected, using wide angle as default") }
-        }
-        
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
-            self.availableBackCameraTypes = detectedTypes
-            if self.config.isLoggingEnabled { self.logger.debug("Available back camera types: \(detectedTypes.map { $0.localizedName }.joined(separator: ", "))") }
-        }
-    }
-    
     // MARK: - Private Helpers
 
     private func configureSenderParameters() {
-        guard let pc = peerConnection else {
-            if config.isLoggingEnabled { logger.warning("PeerConnection not available for configuring sender parameters.") }
+        guard let pc = peerConnection, 
+              let sender = pc.senders.first(where: { $0.track?.kind == kRTCMediaStreamTrackKindVideo }),
+              !sender.parameters.encodings.isEmpty else {
+            if config.isLoggingEnabled { logger.warning("Could not configure sender parameters: No video sender or empty encodings.") }
             return
         }
-
-        guard let sender = pc.senders.first(where: { $0.track?.kind == kRTCMediaStreamTrackKindVideo }) else {
-            if config.isLoggingEnabled { logger.warning("Could not find video sender to configure parameters.") }
-            return
-        }
-
+        
         let parameters = sender.parameters
-
-        guard !parameters.encodings.isEmpty else {
-            if config.isLoggingEnabled { logger.warning("Sender parameters encodings array is empty.") }
-            return
-        }
-
         var encodingParam = parameters.encodings[0]
         
         encodingParam.maxBitrateBps = NSNumber(value: config.maxBitrateBps)
-        
         encodingParam.minBitrateBps = NSNumber(value: config.minBitrateBps)
-        
         encodingParam.maxFramerate = NSNumber(value: config.maxFramerateFps)
         
         parameters.encodings[0] = encodingParam
-        sender.parameters = parameters 
+        sender.parameters = parameters
+
         if config.isLoggingEnabled { 
-            logger.info("Applied encoding parameters from config: MaxBitrate=\(self.config.maxBitrateBps), MinBitrate=\(self.config.minBitrateBps), MaxFramerate=\(self.config.maxFramerateFps)") 
+            logger.info("Applied encoding parameters: MaxBitrate=\(config.maxBitrateBps), MinBitrate=\(config.minBitrateBps), MaxFramerate=\(config.maxFramerateFps)") 
         }
     }
     
-    private func startCaptureSession() {
-        if config.isLoggingEnabled { logger.info("Starting AVCaptureSession...") }
-        videoOutputQueue.async { [weak self] in
-             guard let self = self else { return }
-             if !self.captureSession.isRunning {
-                 self.captureSession.startRunning()
-                 if self.config.isLoggingEnabled { self.logger.info("AVCaptureSession started.") }
-            } else {
-                 if self.config.isLoggingEnabled { self.logger.warning("AVCaptureSession already running.") }
-            }
-        }
-    }
-
-    private func stopCaptureSession() {
-        if config.isLoggingEnabled { logger.info("Stopping AVCaptureSession...") }
-         videoOutputQueue.async { [weak self] in
-             guard let self = self else { return }
-             if self.captureSession.isRunning {
-                self.captureSession.stopRunning()
-                 if self.config.isLoggingEnabled { self.logger.info("AVCaptureSession stopped.") }
-            } else {
-                 if self.config.isLoggingEnabled { self.logger.warning("AVCaptureSession already stopped.") }
-            }
-        }
-    }
-
-    // MARK: - AVCaptureVideoDataOutputSampleBufferDelegate
-
-    public func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
-            if config.isLoggingEnabled { logger.warning("Failed to get CVPixelBuffer from CMSampleBuffer.") }
-            return
-        }
-        let timeStampNs = CMTimeGetSeconds(CMSampleBufferGetPresentationTimeStamp(sampleBuffer)) * 1_000_000_000
-        let rtcPixelBuffer = RTCCVPixelBuffer(pixelBuffer: pixelBuffer)
-
-        let rotation: RTCVideoRotation = {
-            let currentCombination = (self.currentCameraPosition, self.deviceOrientation)
-            var rotationResult: RTCVideoRotation = ._90 
-            var isHandled = false
-            
-            switch currentCombination {
-            case (.front, .portrait):           rotationResult = ._90; isHandled = true
-            case (.front, .portraitUpsideDown): rotationResult = ._270; isHandled = true
-            case (.front, .landscapeLeft):      rotationResult = ._180; isHandled = true
-            case (.front, .landscapeRight):     rotationResult = ._0;   isHandled = true
-            case (.back, .portrait):            rotationResult = ._90; isHandled = true
-            case (.back, .portraitUpsideDown):  rotationResult = ._270; isHandled = true
-            case (.back, .landscapeLeft):       rotationResult = ._0;   isHandled = true
-            case (.back, .landscapeRight):      rotationResult = ._180; isHandled = true
-            default:
-                
-                isHandled = false
-            }
-            
-            if !isHandled {
-                
-                if self.config.isLoggingEnabled {
-                    
-                    var shouldLogWarning = false
-                    if let lastWarning = self.lastLoggedOrientationWarning {
-                        
-                        if lastWarning != currentCombination {
-                            shouldLogWarning = true
-                        }
-                    } else {
-                        
-                        shouldLogWarning = true
-                    }
-
-                    
-                    if shouldLogWarning {
-                       logger.warning("Unhandled device orientation \(self.deviceOrientation.rawValue) for camera position \(self.currentCameraPosition.rawValue). Using default rotation (.rotation90).")
-                       self.lastLoggedOrientationWarning = currentCombination 
-                    }
-                }
-            } else {
-                
-                self.lastLoggedOrientationWarning = nil
-            }
-            
-            return rotationResult
-        }()
-
-        let rtcVideoFrame = RTCVideoFrame(buffer: rtcPixelBuffer, rotation: rotation, timeStampNs: Int64(timeStampNs))
-        videoSource.capturer(self, didCapture: rtcVideoFrame)
-    }
-
-    public func captureOutput(_ output: AVCaptureOutput, didDrop sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-         if config.isLoggingEnabled { logger.warning("Dropped video frame.") }
-     }
-
     // MARK: - RTCPeerConnectionDelegate
 
     public func peerConnection(_ peerConnection: RTCPeerConnection, didChange stateChanged: RTCSignalingState) {
@@ -1062,8 +595,30 @@ public class HuanCaptureManager: RTCVideoCapturer, AVCaptureVideoDataOutputSampl
     // MARK: - Logging Control
     public func setLogging(enabled: Bool) {
         if config.isLoggingEnabled != enabled {
-             logger.info("Logging setting change requested: \(enabled ? "Enabled" : "Disabled") (Note: Affects future checks of config.isLoggingEnabled)")
+             logger.info("Logging setting change requested to: \(enabled). Note: Affects future checks, not past logs or provider's log setting if passed at init.")
         }
     }
+
+    // VideoFrameProviderDelegate Methods
+    public func videoFrameProvider(_ provider: VideoFrameProvider, didCapture videoFrame: RTCVideoFrame) {
+        self.videoSource.capturer(self, didCapture: videoFrame)
+    }
+    public func videoFrameProvider(_ provider: VideoFrameProvider, didEncounterError error: Error) {
+        DispatchQueue.main.async { self.captureError = error }
+        if config.isLoggingEnabled { logger.error("Error from VideoFrameProvider: \(error.localizedDescription)") }
+    }
+    public func videoFrameProvider(_ provider: VideoFrameProvider, didUpdateCameraPosition position: AVCaptureDevice.Position) {
+        DispatchQueue.main.async { self.currentCameraPosition = position }
+    }
+    public func videoFrameProvider(_ provider: VideoFrameProvider, didUpdateCameraType type: CameraType) {
+        DispatchQueue.main.async { self.currentCameraType = type }
+    }
+    public func videoFrameProvider(_ provider: VideoFrameProvider, didUpdateAvailableBackCameraTypes types: [CameraType]) {
+        DispatchQueue.main.async { self.availableBackCameraTypes = types }
+    }
+    public func videoFrameProvider(_ provider: VideoFrameProvider, didUpdatePreviewMirrored mirrored: Bool) {
+        DispatchQueue.main.async { self.isPreviewMirrored = mirrored }
+    }
 }
+
 
