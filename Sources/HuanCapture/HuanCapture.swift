@@ -117,7 +117,7 @@ public class HuanCaptureManager: RTCVideoCapturer, RTCPeerConnectionDelegate, Si
     private var isStoppingManually = false
     internal var signalingServer: SignalingServerProtocol?
     
-    private let frameProvider: VideoFrameProvider
+    public private(set) var frameProvider: VideoFrameProvider
     private var cameraControlProvider: CameraControlProvider? {
         frameProvider as? CameraControlProvider
     }

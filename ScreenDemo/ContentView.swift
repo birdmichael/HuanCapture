@@ -15,8 +15,6 @@ import WebRTC
 struct ContentView: View {
     @StateObject private var captureManager: HuanCaptureManager
     private let config: HuanCaptureConfig
-    
-    @State private var isRecordingScreen = false
     @State private var counter = 0
     // 计时器用于更新屏幕上的计数器，使其在录制时可见内容变化
     let timer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
@@ -48,7 +46,7 @@ struct ContentView: View {
             .padding()
             .font(.title)
             .buttonStyle(.borderedProminent)
-            .tint(isRecordingScreen ? .pink : .indigo) // 使用不同的颜色以便区分
+            .tint(captureManager.frameProvider.isRunning ? .pink : .indigo) // 使用不同的颜色以便区分
         }
         .padding()
         .onDisappear {
@@ -60,18 +58,14 @@ struct ContentView: View {
     }
 
     func getButtonLabel() -> String {
-        return isRecordingScreen ? "停止捕捉和推流" : "开始捕捉并推流"
+        return captureManager.frameProvider.isRunning ? "停止捕捉和推流" : "开始捕捉并推流"
     }
 
     func toggleScreenCaptureAndStreaming() {
-        if isRecordingScreen {
-            if !captureManager.connectionState.isIdleOrDisconnected {
-                captureManager.stopStreaming()
-            }
+        if captureManager.frameProvider.isRunning {
+            captureManager.stopStreaming()
         } else {
-            if captureManager.connectionState.isIdleOrDisconnected {
-                 captureManager.startStreaming()
-            }
+            captureManager.startStreaming()
         }
     }
 }
