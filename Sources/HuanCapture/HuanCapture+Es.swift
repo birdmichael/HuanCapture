@@ -93,12 +93,12 @@ extension HuanCaptureManager {
             return
         }
         
-        if type == "answer" {
-            if config.isLoggingEnabled { esLogger.info("Handling received Answer SDP via ES.") }
-            guard let esSignaler = self.signalingServer as? EsSignalingServer else { return }
-            esSignaler.handleAnswerSdp(sdp)
-        } else if type == "offer" {
-            if config.isLoggingEnabled { esLogger.warning("Received unexpected Offer SDP via ES from TV.") }
+            if type == "answer" {
+                if config.isLoggingEnabled { esLogger.info("Handling received Answer SDP via ES.") }
+                guard let esSignaler = self.signalingServer as? EsSignalingServer else { return }
+                esSignaler.handleAnswerSdp(sdp)
+            } else if type == "offer" {
+                if config.isLoggingEnabled { esLogger.warning("Received unexpected Offer SDP via ES from TV.") }
         } else {
             if config.isLoggingEnabled { esLogger.warning("Received SDP event with unknown type: \(type)") }
         }
@@ -145,7 +145,7 @@ extension HuanCaptureManager {
     }
     
     private func handleEsBackCameraSwitchEvent(_ args: String?) {
-        guard let requestedTypeRawValue = args else {
+         guard let requestedTypeRawValue = args else {
              if config.isLoggingEnabled { esLogger.warning("Received BackCamera event with missing arguments.") }
             return
         }

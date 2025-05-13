@@ -18,7 +18,8 @@ HuanCapture 是一个为 macOS/iOS 设计的 Swift 视频捕获和 WebRTC 集成
 
 - **灵活的视频源**:
     - **摄像头**: 通过 `CameraFrameProvider` 支持前后摄像头切换及后置多摄像头类型切换（广角、长焦、超广角）。
-    - **应用内屏幕捕捉**: 通过 `ExternalFrameProvider` 结合 ReplayKit 的 `RPScreenRecorder` 实现应用内屏幕画面推流。
+    - **外部帧源/应用扩展屏幕捕捉**: 通过 `ExternalFrameProvider` 接收来自外部（如 Broadcast Upload Extension 或其他自定义渲染管线）的 `CVPixelBuffer` 数据，适合应用外屏幕捕捉或高级自定义视频源。
+    - **应用内直接屏幕捕捉**: 通过 `InAppScreenFrameProvider` 直接使用 `RPScreenRecorder` 实现应用内屏幕画面推流，无需配置 Broadcast Upload Extension，但仅限于应用自身界面。
     - **自定义视频源**: 可通过实现 `VideoFrameProvider` 协议接入任何视频数据源。
 - **WebRTC 集成**: 简化 WebRTC 连接和媒体流处理。
 - **SwiftUI 友好**: 提供预览视图，易于集成到 SwiftUI 应用中。
@@ -41,10 +42,11 @@ HuanCapture 是一个为 macOS/iOS 设计的 Swift 视频捕获和 WebRTC 集成
 
 `HuanCaptureManager` 的核心设计围绕 `VideoFrameProvider` 协议。您在初始化 `HuanCaptureManager` 时，需要提供一个实现了此协议的对象。这决定了视频数据的来源。
 
-HuanCapture 提供了两个内置的 Provider：
+HuanCapture 提供了三个内置的 Provider：
 
 1.  **`CameraFrameProvider`**: 用于从设备的摄像头捕获视频。
-2.  **`ExternalFrameProvider`**: 用于接收外部生成的 `CVPixelBuffer` 数据，非常适合应用内屏幕捕捉或其他自定义渲染的场景。
+2.  **`ExternalFrameProvider`**: 用于接收外部生成的 `CVPixelBuffer` 数据，非常适合应用内屏幕捕捉（特别是通过 Broadcast Upload Extension 实现的应用外屏幕内容捕捉）或其他自定义渲染的场景。
+3.  **`InAppScreenFrameProvider`**: 用于直接从应用内部捕获屏幕内容，使用 `RPScreenRecorder`。它简化了纯应用内屏幕分享的设置，因为它不需要 Broadcast Upload Extension。**注意：此方式仅能捕获应用自身窗口的内容。**
 
 ```swift
 // VideoFrameProvider.swift (协议定义)
@@ -86,12 +88,25 @@ let cameraProvider = CameraFrameProvider.create(
 
 ```swift
 import HuanCapture
-import ReplayKit // 如果用于屏幕捕捉
+// import ReplayKit // ReplayKit is used internally by InAppScreenFrameProvider or externally with a Broadcast Extension
 
 // 创建 ExternalFrameProvider
+// ExternalFrameProvider is best used when CVPixelBuffer instances are coming from an external source,
+// such as a Broadcast Upload Extension (IPC) or a custom video pipeline.
 let externalFrameProvider = ExternalFrameProvider.create(isLoggingEnabled: true)
 
 // 对于屏幕捕捉，您还需要配置 RPScreenRecorder (详见后续示例)
+// Note: For simple in-app screen capture, consider using InAppScreenFrameProvider.
+```
+
+**c) 使用应用内直接屏幕捕捉 (`InAppScreenFrameProvider`)**
+
+```swift
+import HuanCapture
+
+// 创建 InAppScreenFrameProvider
+let inAppScreenProvider = InAppScreenFrameProvider.create(isLoggingEnabled: true)
+// This provider handles RPScreenRecorder internally for capturing the app's own screen.
 ```
 
 ### 2. 配置并初始化 HuanCaptureManager
@@ -120,6 +135,9 @@ let captureManager = HuanCaptureManager(
 
 // 如果使用 externalFrameProvider:
 // let captureManagerForScreen = HuanCaptureManager(frameProvider: externalFrameProvider, config: huanConfig)
+
+// 如果使用 inAppScreenProvider:
+// let captureManagerForInAppScreen = HuanCaptureManager(frameProvider: inAppScreenProvider, config: huanConfig)
 
 // --- (可选) EsMessenger特定设备获取 ---
 #if canImport(es_cast_client_ios)
@@ -221,73 +239,79 @@ extension HuanCaptureManager {
 
 ### 4. 应用内屏幕捕捉示例 (`ExternalFrameProvider` + `RPScreenRecorder`)
 
+此示例展示了如何手动结合 `RPScreenRecorder` 和 `ExternalFrameProvider` 进行应用内屏幕捕捉。如果您仅需简单的应用内屏幕捕捉，新引入的 `InAppScreenFrameProvider` 提供了更封装的解决方案。`ExternalFrameProvider` 更适用于您需要从自定义来源（如 Broadcast Upload Extension 通过 IPC 传递的数据，或其他 CVPixelBuffer 生成管线）提供帧的场景。
+
 ```swift
 // 在您的 SwiftUI View 中 (例如 ContentView)
-
-// @StateObject private var captureManager: HuanCaptureManager (已在上面初始化)
-// private let externalFrameProvider: ExternalFrameProvider (已在上面初始化)
-// private let screenRecorder = RPScreenRecorder.shared()
-@State private var isScreenRecording = false
-
-// ...
-
-func toggleScreenCaptureAndStreaming() {
-    if isScreenRecording {
-        // 停止屏幕捕捉
-        screenRecorder.stopCapture { error in
-            self.isScreenRecording = false
-            if let error = error { print("停止屏幕捕捉失败: \(error.localizedDescription)") }
-        }
-        // 停止 WebRTC 推流
-        if !captureManager.connectionState.isIdleOrDisconnected { // 假设有此辅助属性
-            captureManager.stopStreaming()
-        }
-    } else {
-        // 开始屏幕捕捉
-        guard screenRecorder.isAvailable else {
-            print("屏幕录制不可用")
-            return
-        }
-        screenRecorder.startCapture(handler: { (sampleBuffer, bufferType, error) in
-            guard error == nil else {
-                // 处理错误，可能需要停止
-                print("屏幕捕捉错误: \(error!.localizedDescription)")
-                self.isScreenRecording = false // 确保状态更新
-                self.screenRecorder.stopCapture() // 尝试停止
-                if !self.captureManager.connectionState.isIdleOrDisconnected {
-                     self.captureManager.stopStreaming()
-                }
-                return
-            }
-
-            if bufferType == .video, let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) {
-                let timestampNs = CMTimeGetSeconds(CMSampleBufferGetPresentationTimeStamp(sampleBuffer)) * 1_000_000_000
-                // 将帧数据喂给 ExternalFrameProvider
-                self.externalFrameProvider.consumePixelBuffer(pixelBuffer, rotation: ._0, timestampNs: Int64(timestampNs))
-            }
-        }) { (error) in
-            if let error = error {
-                print("启动屏幕捕捉失败: \(error.localizedDescription)")
-                self.isScreenRecording = false
-            } else {
-                print("屏幕捕捉已成功启动。")
-                self.isScreenRecording = true
-                // 屏幕捕捉启动后，再启动 WebRTC 推流
-                if self.captureManager.connectionState.isIdleOrDisconnected {
-                    self.captureManager.startStreaming()
-                }
-            }
-        }
-    }
-}
-
-// ... 在 Button 的 action 中调用 toggleScreenCaptureAndStreaming() ...
-
-// 辅助扩展 (RTCIceConnectionState.isIdleOrDisconnected 需要您自行添加或从Demo复制)
+// ... existing code ...
 // extension RTCIceConnectionState {
 //     var isIdleOrDisconnected: Bool { /* ... */ }
 // }
 ```
+
+### 4b. 应用内直接屏幕捕捉示例 (`InAppScreenFrameProvider`)
+
+使用 `InAppScreenFrameProvider` 可以更简单地实现纯应用内屏幕内容的推流，因为它内部封装了 `RPScreenRecorder` 的逻辑。
+
+```swift
+// 在您的 SwiftUI View 中 (例如 ContentView)
+
+struct ContentView: View {
+    @StateObject private var captureManager: HuanCaptureManager
+    // private let inAppScreenProvider: InAppScreenFrameProvider // Provider is internal to manager
+
+    init() {
+        let provider = InAppScreenFrameProvider.create(isLoggingEnabled: true)
+        let config = HuanCaptureConfig(isLoggingEnabled: true, signalingModeInput: .webSocket) // 或其他配置
+        _captureManager = StateObject(wrappedValue: HuanCaptureManager(frameProvider: provider, config: config))
+    }
+    
+    var body: some View {
+        VStack {
+            Text("应用内屏幕预览")
+                .font(.headline)
+            
+            CapturePreviewRepresentable(captureView: captureManager.previewView)
+                .aspectRatio(CGSize(width: 16, height: 9), contentMode: .fit)
+                .frame(height: 250)
+                .background(Color.black)
+                .cornerRadius(12)
+                .clipped()
+            
+            Button(captureManager.isStreaming() ? "停止屏幕推流" : "开始屏幕推流") { // 假设 captureManager.isStreaming() 方法存在
+                if captureManager.isStreaming() {
+                    captureManager.stopStreaming()
+                } else {
+                    // InAppScreenFrameProvider 会在 startStreaming -> startProviding 时自动处理 RPScreenRecorder
+                    captureManager.startStreaming()
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .padding(.top)
+            
+            // ... 其他UI元素和状态显示 ...
+        }
+        .padding()
+        // .onAppear {
+        //     // 如果需要，可以在视图出现时自动开始
+        // }
+    }
+}
+
+// 辅助扩展 (建议添加到 HuanCaptureManager 或作为全局辅助)
+extension HuanCaptureManager {
+    // 示例：一个简单的判断是否正在推流的方法，实际应基于 connectionState 等
+    func isStreaming() -> Bool {
+        return self.localSDP != nil && (self.connectionState == .connected || self.connectionState == .completed || self.connectionState == .checking)
+    }
+}
+
+// CapturePreviewRepresentable 结构体 (如前所述)
+```
+**注意**:
+*   `InAppScreenFrameProvider` 会在 `startProviding()` (由 `captureManager.startStreaming()` 触发) 时自动启动 `RPScreenRecorder`。
+*   用户会看到系统权限请求弹窗（如果尚未授权）。
+*   此方法仅捕获应用自身的内容。若需捕获应用外内容，仍需结合 Broadcast Upload Extension 和 `ExternalFrameProvider` (通过IPC传递数据)。
 
 ### 5. 监听状态变化
 

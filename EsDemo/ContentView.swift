@@ -44,7 +44,9 @@ struct ContentView: View {
     private let maxLogEntries = 100
 
     init(device: EsDevice) {
-        _captureManager = StateObject(wrappedValue: HuanCaptureManager(frameProvider: CameraFrameProvider(), config: .init(signalingModeInput: .esMessenger(device))))
+        let config = HuanCaptureConfig(maxBitrateBps: 800_000, minBitrateBps: 300_000, maxFramerateFps: 16, signalingModeInput: .esMessenger(device))
+        _captureManager = StateObject(wrappedValue: HuanCaptureManager(frameProvider: CameraFrameProvider(), config: config))
+//        _captureManager = StateObject(wrappedValue: HuanCaptureManager(frameProvider: InAppScreenFrameProvider(), config: config))
     }
 
     var body: some View {

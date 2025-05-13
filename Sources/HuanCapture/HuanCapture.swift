@@ -158,7 +158,7 @@ public class HuanCaptureManager: RTCVideoCapturer, RTCPeerConnectionDelegate, Si
             if config.isLoggingEnabled { logger.info("Using EsMessenger signaling.") }
             
             setupEsSignaling(device: device)
-          
+            
         case .custom:
             self.signalingServer = nil; self.webSocketStatus = .notApplicable
             if config.isLoggingEnabled { logger.info("Using custom signaling.") }
@@ -422,7 +422,7 @@ public class HuanCaptureManager: RTCVideoCapturer, RTCPeerConnectionDelegate, Si
             if config.isLoggingEnabled { logger.warning("Could not configure sender parameters: No video sender or empty encodings.") }
             return
         }
-        
+
         let parameters = sender.parameters
         var encodingParam = parameters.encodings[0]
         
@@ -431,13 +431,13 @@ public class HuanCaptureManager: RTCVideoCapturer, RTCPeerConnectionDelegate, Si
         encodingParam.maxFramerate = NSNumber(value: config.maxFramerateFps)
         
         parameters.encodings[0] = encodingParam
-        sender.parameters = parameters
+        sender.parameters = parameters 
 
         if config.isLoggingEnabled { 
             logger.info("Applied encoding parameters: MaxBitrate=\(config.maxBitrateBps), MinBitrate=\(config.minBitrateBps), MaxFramerate=\(config.maxFramerateFps)") 
         }
-    }
-    
+     }
+
     // MARK: - RTCPeerConnectionDelegate
 
     public func peerConnection(_ peerConnection: RTCPeerConnection, didChange stateChanged: RTCSignalingState) {
@@ -606,10 +606,10 @@ public class HuanCaptureManager: RTCVideoCapturer, RTCPeerConnectionDelegate, Si
     public func videoFrameProvider(_ provider: VideoFrameProvider, didEncounterError error: Error) {
         DispatchQueue.main.async { self.captureError = error }
         if config.isLoggingEnabled { logger.error("Error from VideoFrameProvider: \(error.localizedDescription)") }
-    }
+        }
     public func videoFrameProvider(_ provider: VideoFrameProvider, didUpdateCameraPosition position: AVCaptureDevice.Position) {
         DispatchQueue.main.async { self.currentCameraPosition = position }
-    }
+}
     public func videoFrameProvider(_ provider: VideoFrameProvider, didUpdateCameraType type: CameraType) {
         DispatchQueue.main.async { self.currentCameraType = type }
     }
