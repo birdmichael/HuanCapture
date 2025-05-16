@@ -53,8 +53,6 @@ public class InAppScreenFrameProvider: NSObject, VideoFrameProvider {
 
                 let timestampNs = Int64(CMTimeGetSeconds(CMSampleBufferGetPresentationTimeStamp(sampleBuffer)) * 1_000_000_000)
                 
-                // Screen content is typically not rotated relative to the device orientation it's captured in.
-                // If specific rotation is needed based on device orientation, it would require more complex handling.
                 let rotation = RTCVideoRotation._0
 
                 let rtcPixelBuffer = RTCCVPixelBuffer(pixelBuffer: pixelBuffer)

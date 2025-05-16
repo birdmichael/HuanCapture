@@ -37,6 +37,8 @@ public struct HuanCaptureConfig {
     public let minBitrateBps: Int
     /// WebRTC 连接的最大帧率 (fps)。
     public let maxFramerateFps: Int
+    /// WebRTC 连接的视频缩放比例。
+    public let scaleResolutionDownBy : Int?
     /// 使用的信令模式。
     public let signalingMode: SignalingMode
 
@@ -48,6 +50,7 @@ public struct HuanCaptureConfig {
         maxBitrateBps: Int = 50_000_000,
         minBitrateBps: Int = 1_000_000,
         maxFramerateFps: Int = 30,
+        scaleResolutionDownBy: Int? = nil,
         signalingModeInput: SignalingMode
     ) {
         self.webSocketPort = webSocketPort
@@ -55,6 +58,7 @@ public struct HuanCaptureConfig {
         self.maxBitrateBps = maxBitrateBps
         self.minBitrateBps = minBitrateBps
         self.maxFramerateFps = maxFramerateFps
+        self.scaleResolutionDownBy = scaleResolutionDownBy
         self.signalingMode = signalingModeInput
     }
 } 

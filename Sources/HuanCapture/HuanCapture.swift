@@ -429,6 +429,10 @@ public class HuanCaptureManager: RTCVideoCapturer, RTCPeerConnectionDelegate, Si
         encodingParam.maxBitrateBps = NSNumber(value: config.maxBitrateBps)
         encodingParam.minBitrateBps = NSNumber(value: config.minBitrateBps)
         encodingParam.maxFramerate = NSNumber(value: config.maxFramerateFps)
+        if let scaleResolutionDownBy = config.scaleResolutionDownBy {
+            encodingParam.scaleResolutionDownBy = NSNumber(value: scaleResolutionDownBy)
+        }
+        
         
         parameters.encodings[0] = encodingParam
         sender.parameters = parameters 
