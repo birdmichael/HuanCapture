@@ -12,9 +12,7 @@
 		802A2A582DB9265D00F88F2A /* HuanCapture in Frameworks */ = {isa = PBXBuildFile; productRef = 802A2A572DB9265D00F88F2A /* HuanCapture */; };
 		802A2A5B2DB926CF00F88F2A /* HuanCapture in Frameworks */ = {isa = PBXBuildFile; productRef = 802A2A5A2DB926CF00F88F2A /* HuanCapture */; };
 		802A2A6A2DBA0CF700F88F2A /* HuanCapture in Frameworks */ = {isa = PBXBuildFile; productRef = 802A2A692DBA0CF700F88F2A /* HuanCapture */; };
-		8097DC982DC9FB3D0013E750 /* HuanCapture in Frameworks */ = {isa = PBXBuildFile; productRef = 8097DC972DC9FB3D0013E750 /* HuanCapture */; };
-		8097DD372DCC67520013E750 /* HuanCapture in Frameworks */ = {isa = PBXBuildFile; productRef = 8097DD362DCC67520013E750 /* HuanCapture */; };
-		80AABF892DD0D5090043DFFA /* HuanCapture in Frameworks */ = {isa = PBXBuildFile; productRef = 80AABF882DD0D5090043DFFA /* HuanCapture */; };
+		8059B65F2DE9D2C900B8A380 /* HuanCapture in Frameworks */ = {isa = PBXBuildFile; productRef = 8059B65E2DE9D2C900B8A380 /* HuanCapture */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -92,7 +90,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				8097DD372DCC67520013E750 /* HuanCapture in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -100,7 +97,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				80AABF892DD0D5090043DFFA /* HuanCapture in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -108,7 +104,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				8097DC982DC9FB3D0013E750 /* HuanCapture in Frameworks */,
+				8059B65F2DE9D2C900B8A380 /* HuanCapture in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -195,7 +191,6 @@
 			);
 			name = OC_Demo;
 			packageProductDependencies = (
-				8097DD362DCC67520013E750 /* HuanCapture */,
 			);
 			productName = OC_Demo;
 			productReference = 8097DD1C2DCC673C0013E750 /* OC_Demo.app */;
@@ -218,7 +213,6 @@
 			);
 			name = ScreenDemo;
 			packageProductDependencies = (
-				80AABF882DD0D5090043DFFA /* HuanCapture */,
 			);
 			productName = ScreenDemo;
 			productReference = 80AABF572DD0D02E0043DFFA /* ScreenDemo.app */;
@@ -241,7 +235,7 @@
 			);
 			name = EsDemo;
 			packageProductDependencies = (
-				8097DC972DC9FB3D0013E750 /* HuanCapture */,
+				8059B65E2DE9D2C900B8A380 /* HuanCapture */,
 			);
 			productName = EsDemo;
 			productReference = 80FA1D812DBFCE6C0040B8F3 /* EsDemo.app */;
@@ -282,7 +276,7 @@
 			mainGroup = 805E14BE2DB7F630004CF67D;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				80FA1D912DBFD0F20040B8F3 /* XCLocalSwiftPackageReference "../HuanCapture" */,
+				8059B65D2DE9D2C900B8A380 /* XCLocalSwiftPackageReference "../HuanCapture" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 805E14C92DB7F630004CF67D /* Products */;
@@ -777,7 +771,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		80FA1D912DBFD0F20040B8F3 /* XCLocalSwiftPackageReference "../HuanCapture" */ = {
+		8059B65D2DE9D2C900B8A380 /* XCLocalSwiftPackageReference "../HuanCapture" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../HuanCapture;
 		};
@@ -804,19 +798,8 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = HuanCapture;
 		};
-		8097DC972DC9FB3D0013E750 /* HuanCapture */ = {
+		8059B65E2DE9D2C900B8A380 /* HuanCapture */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 80FA1D912DBFD0F20040B8F3 /* XCLocalSwiftPackageReference "../HuanCapture" */;
-			productName = HuanCapture;
-		};
-		8097DD362DCC67520013E750 /* HuanCapture */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 80FA1D912DBFD0F20040B8F3 /* XCLocalSwiftPackageReference "../HuanCapture" */;
-			productName = HuanCapture;
-		};
-		80AABF882DD0D5090043DFFA /* HuanCapture */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 80FA1D912DBFD0F20040B8F3 /* XCLocalSwiftPackageReference "../HuanCapture" */;
 			productName = HuanCapture;
 		};
 /* End XCSwiftPackageProductDependency section */
