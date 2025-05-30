@@ -22,6 +22,44 @@ struct LogEntry: Identifiable {
     }
 }
 
+struct RandomColorAnimatedView: View {
+    @State private var currentNumber: Int = 0
+    @State private var backgroundColor: Color = .red
+    @State private var timer: Timer?
+    
+    private let colors: [Color] = [.red, .blue, .green, .orange, .purple, .pink, .yellow, .cyan, .mint, .indigo]
+    
+    var body: some View {
+        ZStack {
+            backgroundColor
+                .ignoresSafeArea()
+                .animation(.easeInOut(duration: 0.5), value: backgroundColor)
+            
+            Text("\(currentNumber)")
+                .font(.system(size: 120, weight: .bold, design: .rounded))
+                .foregroundColor(.white)
+                .shadow(color: .black.opacity(0.3), radius: 10, x: 5, y: 5)
+                .scaleEffect(currentNumber % 2 == 0 ? 1.0 : 1.2)
+                .animation(.spring(response: 0.3, dampingFraction: 0.6), value: currentNumber)
+        }
+        .onAppear {
+            startAnimation()
+        }
+        .onDisappear {
+            timer?.invalidate()
+        }
+    }
+    
+    private func startAnimation() {
+        timer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: true) { _ in
+            withAnimation {
+                currentNumber = Int.random(in: 0...999)
+                backgroundColor = colors.randomElement() ?? .red
+            }
+        }
+    }
+}
+
 struct CapturePreviewRepresentable: UIViewRepresentable {
     let captureView: UIView
 
@@ -44,14 +82,19 @@ struct ContentView: View {
     private let maxLogEntries = 100
 
     init(device: EsDevice) {
-        let config = HuanCaptureConfig(maxBitrateBps: 800_000, minBitrateBps: 300_000, maxFramerateFps: 16, signalingModeInput: .esMessenger(device))
-        _captureManager = StateObject(wrappedValue: HuanCaptureManager(frameProvider: CameraFrameProvider(), config: config))
-//        _captureManager = StateObject(wrappedValue: HuanCaptureManager(frameProvider: InAppScreenFrameProvider(), config: config))
+        let config = HuanCaptureConfig(maxBitrateBps: 500_000,
+                                       minBitrateBps: 800_000,
+                                       maxFramerateFps: 20,
+                                       scaleResolutionDownBy: 6,
+                                       signalingModeInput: .esMessenger(device))
+//        _captureManager = StateObject(wrappedValue: HuanCaptureManager(frameProvider: CameraFrameProvider(), config: config))
+        _captureManager = StateObject(wrappedValue: HuanCaptureManager(frameProvider: InAppScreenFrameProvider(), config: config))
+        
     }
 
     var body: some View {
         ZStack {
-            HuanCapturePreview(captureManager: captureManager)
+            RandomColorAnimatedView()
                 .edgesIgnoringSafeArea(.all)
 
             VStack {

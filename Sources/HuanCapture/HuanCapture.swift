@@ -28,7 +28,23 @@ struct PrintLog {
     }
 }
 
-public enum CameraType: RawRepresentable { // Ensure RawRepresentable conformance here or in the extension
+// MARK: - H.264 Only Encoder Factory
+
+class H264OnlyEncoderFactory: NSObject, RTCVideoEncoderFactory {
+    func createEncoder(_ info: RTCVideoCodecInfo) -> RTCVideoEncoder? {
+        if info.name.lowercased() == "h264" {
+            return RTCVideoEncoderH264()
+        }
+        return nil
+    }
+    
+    func supportedCodecs() -> [RTCVideoCodecInfo] {
+        let h264Info = RTCVideoCodecInfo(name: "H264")
+        return [h264Info]
+    }
+}
+
+public enum CameraType: RawRepresentable {
     public typealias RawValue = String
 
     case wideAngle
@@ -179,9 +195,16 @@ public class HuanCaptureManager: RTCVideoCapturer, RTCPeerConnectionDelegate, Si
 
     // MARK: - Setup
 
+    private func createH264EncoderFactory() -> RTCVideoEncoderFactory {
+        // Create a custom encoder factory that only supports H.264
+        let customFactory = H264OnlyEncoderFactory()
+        if config.isLoggingEnabled { logger.info("Forcing H.264 video encoder") }
+        return customFactory
+    }
+
     private func setupWebRTC() {
         if config.isLoggingEnabled { logger.debug("Setting up WebRTC...") }
-        let videoEncoderFactory = RTCDefaultVideoEncoderFactory()
+        let videoEncoderFactory = createH264EncoderFactory()
         let videoDecoderFactory = RTCDefaultVideoDecoderFactory()
         peerConnectionFactory = RTCPeerConnectionFactory(encoderFactory: videoEncoderFactory, decoderFactory: videoDecoderFactory)
 
@@ -292,6 +315,7 @@ public class HuanCaptureManager: RTCVideoCapturer, RTCPeerConnectionDelegate, Si
                           self.configureSenderParameters()
 
                           self.signalingServer?.sendOffer(sdp: sdp.sdp)
+                          if self.config.isLoggingEnabled { self.logger.info("======== SDP ======== \n\(sdp.sdp) \n ======= end =======") }
                           
                           self.frameProvider.startProviding()
                       }
@@ -416,7 +440,7 @@ public class HuanCaptureManager: RTCVideoCapturer, RTCPeerConnectionDelegate, Si
     // MARK: - Private Helpers
 
     private func configureSenderParameters() {
-        guard let pc = peerConnection, 
+        guard let pc = peerConnection,
               let sender = pc.senders.first(where: { $0.track?.kind == kRTCMediaStreamTrackKindVideo }),
               !sender.parameters.encodings.isEmpty else {
             if config.isLoggingEnabled { logger.warning("Could not configure sender parameters: No video sender or empty encodings.") }
@@ -435,10 +459,10 @@ public class HuanCaptureManager: RTCVideoCapturer, RTCPeerConnectionDelegate, Si
         
         
         parameters.encodings[0] = encodingParam
-        sender.parameters = parameters 
+        sender.parameters = parameters
 
-        if config.isLoggingEnabled { 
-            logger.info("Applied encoding parameters: MaxBitrate=\(config.maxBitrateBps), MinBitrate=\(config.minBitrateBps), MaxFramerate=\(config.maxFramerateFps)") 
+        if config.isLoggingEnabled {
+            logger.info("Applied encoding parameters: MaxBitrate=\(config.maxBitrateBps), MinBitrate=\(config.minBitrateBps), MaxFramerate=\(config.maxFramerateFps)")
         }
      }
 
@@ -494,7 +518,7 @@ public class HuanCaptureManager: RTCVideoCapturer, RTCPeerConnectionDelegate, Si
                 if let currentError = self.captureError as NSError?,
                    currentError.domain == "HuanCaptureError",
                    currentError.code == 7 {
-                    self.captureError = nil 
+                    self.captureError = nil
                 }
 
             case .new, .checking, .count:
