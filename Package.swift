@@ -12,7 +12,7 @@ let package = Package(
             targets: ["HuanCapture"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/hanliang-tech/es-cast-client-ios", from: "0.1.5")
+        .package(url: "https://github.com/hanliang-tech/es-cast-client-ios", from: "0.1.6")
     ],
     targets: [
         .binaryTarget(
