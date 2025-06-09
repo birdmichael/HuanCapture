@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'HuanCapture'
-  s.version          = '0.1.1'
+  s.version          = '0.1.2'
   s.summary          = 'Screen and audio capture library for iOS.'
   s.homepage         = 'https://github.com/birdmichael/HuanCapture'
   s.license          = { :type => 'MIT', :file => 'LICENSE' }
@@ -12,7 +12,7 @@ Pod::Spec.new do |s|
 
   s.source_files = 'Sources/HuanCapture/**/*.swift'
 
-  s.dependency 'es-cast-client-ios', '~> 0.1.5'
+  s.dependency 'es-cast-client-ios', '0.1.6'
 
   s.vendored_frameworks = 'Frameworks/WebRTC.xcframework'
   s.frameworks = 'UIKit', 'AVFoundation', 'CoreMedia', 'CoreVideo', 'AudioToolbox', 'VideoToolbox', 'OSLog'
