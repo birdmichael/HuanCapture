@@ -38,86 +38,218 @@ enum Action: Hashable {
     }
 }
 
-struct DeviceView: View {
-    @EnvironmentObject var store: Store
-
+// MARK: - Custom UI Components
+struct MainFunctionButton: View {
+    let title: String
+    let icon: String
+    let color: Color
+    var isLoading: Bool = false
+    let action: () -> Void
+    
     var body: some View {
-        VStack {
-            Text("当前IP: \(EsMessenger.shared.iPAddress ?? "")")
-                .padding()
-
-            Text("选中设备:\(store.selectDeive?.deviceName ?? "未选中")")
-
-            ScrollView(.horizontal) {
-                HStack {
-                    ForEach(store.deiveList, id: \.id) { d in
-                        Text(d.deviceName)
-                            .padding(5)
-                            .font(.body)
-                            .background(Color.gray)
-                            .foregroundColor(Color.white)
-                            .cornerRadius(8)
-                            .onTapGesture {
-                                store.selectDeive = d
-                            }
+        Button(action: action) {
+            VStack(spacing: 8) {
+                ZStack {
+                    if isLoading {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .scaleEffect(0.8)
+                    } else {
+                        Image(systemName: icon)
+                            .font(.title2)
                     }
                 }
-                .padding(.horizontal)
-            }
-
-            ScrollView {
-                ScrollViewReader { scrollViewProxy in
-                    LazyVStack {
-                        ForEach(Array(store.messageList.enumerated()), id: \.offset) { index, msg in
-                            Text("[\(msg.deviceIp):\(msg.devicePort)]:\(msg.des)")
-                                .font(.caption2)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .multilineTextAlignment(.leading)
-                                .id(index)
-                        }
-                    }
-                    .onChange(of: store.messageList.count, perform: { _ in
-                        withAnimation {
-                            scrollViewProxy.scrollTo(store.messageList.count - 1)
-                        }
-                    })
-                }
+                .frame(width: 24, height: 24)
+                
+                Text(title)
+                    .font(.caption)
+                    .fontWeight(.medium)
             }
             .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .background(
+                LinearGradient(
+                    gradient: Gradient(colors: [color, color.opacity(0.8)]),
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+            .foregroundColor(.white)
+            .cornerRadius(16)
+            .shadow(color: color.opacity(0.3), radius: 8, x: 0, y: 4)
+        }
+        .disabled(isLoading)
+        .scaleEffect(isLoading ? 0.95 : 1.0)
+        .animation(.easeInOut(duration: 0.2), value: isLoading)
+    }
+}
 
-            LazyVGrid(columns: .init(repeating: GridItem(.flexible()), count: 3), spacing: 10) {
-                ForEach([Action.searchDevice, .startApplication, .closeApplication, .capture, .queryApps, .ping], id: \.self) { action in
-                    Button(action: {
-                        store.performAction(action)
-                    }) {
-                        if action == .ping {
-                            Text(store.online.des)
-                                .padding()
-                                .frame(maxWidth: .infinity)
-                                .background(Color.blue)
-                                .foregroundColor(Color.white)
-                                .cornerRadius(20)
-                        } else {
-                            Text(action.name)
-                                .padding()
-                                .frame(maxWidth: .infinity)
-                                .background(Color.blue)
-                                .foregroundColor(Color.white)
-                                .cornerRadius(20)
-                        }
+struct DeviceCard: View {
+    let device: EsDevice
+    let isSelected: Bool
+    let onTap: () -> Void
+    let onPing: () -> Void
+    @State private var onlineStatus: OnlineStatus = .unknown
+    
+    var body: some View {
+        HStack(spacing: 16) {
+            Button(action: onTap) {
+                HStack(spacing: 16) {
+                    VStack {
+                        Image(systemName: "tv.fill")
+                            .font(.title2)
+                            .foregroundColor(isSelected ? .white : .blue)
+                    }
+                    .frame(width: 44, height: 44)
+                    .background(
+                        Circle()
+                            .fill(isSelected ? Color.blue : Color.blue.opacity(0.1))
+                    )
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(device.deviceName)
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(isSelected ? .white : .primary)
+                        
+                        Text("\(device.deviceIp):\(device.devicePort)")
+                            .font(.caption)
+                            .foregroundColor(isSelected ? .white.opacity(0.8) : .secondary)
+                    }
+                    
+                    Spacer()
+                    
+                    if isSelected {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.title3)
+                            .foregroundColor(.white)
                     }
                 }
             }
-            .padding(.horizontal)
-
-            VStack {
-                ButtonRow(buttons: [.custom(name: "关机", value: 0), .up, .volumeUp])
-                ButtonRow(buttons: [.left, .ok, .right])
-                ButtonRow(buttons: [.back, .down, .volumeDown])
-                ButtonRow(buttons: [.menu, .custom(name: "直播", value: 100), .home])
+            .buttonStyle(PlainButtonStyle())
+            
+            Button(action: {
+                onlineStatus = .searching
+                onPing()
+            }) {
+                HStack(spacing: 4) {
+                    if onlineStatus == .searching {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .scaleEffect(0.7)
+                    } else {
+                        Image(systemName: onlineStatus == .online ? "wifi" : onlineStatus == .offline ? "wifi.slash" : "questionmark.circle")
+                            .font(.caption)
+                    }
+                    Text(onlineStatus.des)
+                        .font(.caption2)
+                        .fontWeight(.medium)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(onlineStatus == .online ? Color.green : onlineStatus == .offline ? Color.red : Color.orange)
+                )
+                .foregroundColor(.white)
             }
+            .disabled(onlineStatus == .searching)
+            .onReceive(NotificationCenter.default.publisher(for: .deviceOnlineStatusChanged)) { notification in
+                if let deviceId = notification.userInfo?["deviceId"] as? String,
+                   let status = notification.userInfo?["status"] as? OnlineStatus,
+                   deviceId == device.id {
+                    onlineStatus = status
+                }
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(isSelected ? Color.blue : Color(.systemBackground))
+                .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(isSelected ? Color.clear : Color.gray.opacity(0.2), lineWidth: 1)
+        )
+    }
+}
 
+struct EmptyDeviceView: View {
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "wifi.slash")
+                .font(.system(size: 48))
+                .foregroundColor(.gray)
+            
+            Text("暂无发现设备")
+                .font(.headline)
+                .foregroundColor(.secondary)
+            
+            Text("点击搜索设备按钮开始查找")
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .padding(.vertical, 40)
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.systemBackground))
+                .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
+        )
+    }
+}
+
+struct InfoRow: View {
+    let title: String
+    let value: String
+    
+    var body: some View {
+        HStack {
+            Text(title)
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+            
             Spacer()
+            
+            Text(value)
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .foregroundColor(.primary)
+        }
+    }
+}
+
+// MARK: - Main View
+struct DeviceView: View {
+    @EnvironmentObject var store: Store
+    @State private var isSearching = false
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                LinearGradient(
+                    gradient: Gradient(colors: [Color.blue.opacity(0.1), Color.purple.opacity(0.1)]),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
+                
+                ScrollView {
+                    VStack(spacing: 24) {
+                        headerSection
+                        
+                        mainFunctionButtons
+                        
+                        deviceListSection
+                        
+                        connectionInfoSection
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 20)
+                }
+            }
         }
         .alert("请输入包名", isPresented: $store.isShowingAlert) {
             TextField("pkg", text: $store.userInput)
@@ -128,8 +260,139 @@ struct DeviceView: View {
                 store.userInput = ""
             }
         }
+        .fullScreenCover(isPresented: $store.showCapture) {
+            ContentView(device: store.selectDeive!, isScreen: store.isScreen)
+        }
         .environmentObject(store)
-        
+    }
+    
+    private var headerSection: some View {
+        VStack(spacing: 12) {
+            Text("HuanCapture演示")
+                .font(.largeTitle)
+                .fontWeight(.bold)
+                .foregroundStyle(
+                    LinearGradient(
+                        gradient: Gradient(colors: [.blue, .purple]),
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+            
+            Text("Huan.Tv专业的屏幕投射解决方案")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+        }
+        .padding(.vertical, 20)
+    }
+    
+    private var mainFunctionButtons: some View {
+        VStack(spacing: 16) {
+            Text("核心功能")
+                .font(.headline)
+                .fontWeight(.semibold)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            
+            HStack(spacing: 16) {
+                MainFunctionButton(
+                    title: "搜索设备",
+                    icon: "magnifyingglass.circle.fill",
+                    color: .blue,
+                    isLoading: isSearching
+                ) {
+                    withAnimation {
+                        isSearching = true
+                    }
+                    store.performAction(.searchDevice)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                        withAnimation {
+                            isSearching = false
+                        }
+                    }
+                }
+                
+                MainFunctionButton(
+                    title: "摄像头",
+                    icon: "camera.fill",
+                    color: .green
+                ) {
+                    store.isScreen = false
+                    store.performAction(.capture)
+                }
+                
+                MainFunctionButton(
+                    title: "录屏",
+                    icon: "record.circle.fill",
+                    color: .red
+                ) {
+                    store.isScreen = true
+                    store.performAction(.capture)
+                }
+            }
+        }
+        .padding(.vertical, 8)
+    }
+    
+    private var deviceListSection: some View {
+        VStack(spacing: 16) {
+            HStack {
+                Text("发现的设备")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                
+                Spacer()
+                
+                Text("\(store.deiveList.count) 台设备")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.secondary.opacity(0.1))
+                    .cornerRadius(8)
+            }
+            
+            if store.deiveList.isEmpty {
+                EmptyDeviceView()
+            } else {
+                LazyVStack(spacing: 12) {
+                     ForEach(store.deiveList, id: \.id) { device in
+                         DeviceCard(
+                             device: device,
+                             isSelected: store.selectDeive?.id == device.id,
+                             onTap: {
+                                 withAnimation(.spring()) {
+                                     store.selectDeive = device
+                                 }
+                             },
+                             onPing: {
+                                 let previousDevice = store.selectDeive
+                                 store.selectDeive = device
+                                 store.performAction(.ping)
+                                 store.selectDeive = previousDevice
+                             }
+                         )
+                     }
+                 }
+            }
+        }
+    }
+    
+    private var connectionInfoSection: some View {
+        VStack(spacing: 12) {
+            Text("连接信息")
+                .font(.headline)
+                .fontWeight(.semibold)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            
+            VStack(spacing: 8) {
+                InfoRow(title: "本机IP", value: EsMessenger.shared.iPAddress ?? "未知")
+                InfoRow(title: "选中设备", value: store.selectDeive?.deviceName ?? "未选中")
+            }
+            .padding(16)
+            .background(Color(.systemBackground))
+            .cornerRadius(12)
+            .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
+        }
     }
 }
 
@@ -157,7 +420,7 @@ struct RemoteButtonView: View {
                 .frame(width: 80, height: 80)
                 .background(Color.gray)
                 .foregroundColor(.white)
-                .cornerRadius(40)
+                 .cornerRadius(40)
         }
     }
 }
@@ -177,6 +440,7 @@ class Store: ObservableObject, MessengerCallback {
     @Published var selectDeive: EsDevice?
     @Published var online: OnlineStatus = .unknown
     @Published var showCapture: Bool = false
+    @Published var isScreen: Bool = false
 
     init() {
         EsMessenger.shared.addDelegate(self)
@@ -234,8 +498,16 @@ class Store: ObservableObject, MessengerCallback {
         case .ping:
             online = .searching
             Task { @MainActor in
-                let online = await EsMessenger.shared.checkDeviceOnline(device: deive, timeout: 10)
-                self.online = online ? .online : .offline
+                let isOnline = await EsMessenger.shared.checkDeviceOnline(device: deive, timeout: 10)
+                let status: OnlineStatus = isOnline ? .online : .offline
+                self.online = status
+                
+                // 发送通知更新特定设备的在线状态
+                NotificationCenter.default.post(
+                    name: .deviceOnlineStatusChanged,
+                    object: nil,
+                    userInfo: ["deviceId": deive.id, "status": status]
+                )
             }
         case .capture:
             Task{ @MainActor in
@@ -248,6 +520,10 @@ class Store: ObservableObject, MessengerCallback {
 
 extension EsEvent {
     var des: String { data.jsonString() ?? "" }
+}
+
+extension Notification.Name {
+    static let deviceOnlineStatusChanged = Notification.Name("deviceOnlineStatusChanged")
 }
 
 extension Dictionary {

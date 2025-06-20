@@ -15,11 +15,8 @@ struct EsDemoApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
-                if store.showCapture {
-                    ContentView(device: store.selectDeive!)
-                } else {
                     DeviceView()
-                }
+                
             }.environmentObject(store)
             
         }

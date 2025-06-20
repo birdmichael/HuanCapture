@@ -81,21 +81,30 @@ struct ContentView: View {
     @State private var logMessages: [LogEntry] = []
     private let maxLogEntries = 100
 
-    init(device: EsDevice) {
-        let config = HuanCaptureConfig(maxBitrateBps: 500_000,
-                                       minBitrateBps: 800_000,
+    init(device: EsDevice, isScreen: Bool) {
+        let config = HuanCaptureConfig(maxBitrateBps: 300_000,
+                                       minBitrateBps: 50_000,
                                        maxFramerateFps: 20,
                                        scaleResolutionDownBy: 6,
                                        signalingModeInput: .esMessenger(device))
-//        _captureManager = StateObject(wrappedValue: HuanCaptureManager(frameProvider: CameraFrameProvider(), config: config))
-        _captureManager = StateObject(wrappedValue: HuanCaptureManager(frameProvider: InAppScreenFrameProvider(), config: config))
+        if isScreen {
+            _captureManager = StateObject(wrappedValue: HuanCaptureManager(frameProvider: InAppScreenFrameProvider(), config: config))
+        } else {
+            _captureManager = StateObject(wrappedValue: HuanCaptureManager(frameProvider: CameraFrameProvider(), config: config))
+        }
         
     }
 
     var body: some View {
         ZStack {
-            RandomColorAnimatedView()
-                .edgesIgnoringSafeArea(.all)
+            if store.isScreen {
+                RandomColorAnimatedView()
+                    .edgesIgnoringSafeArea(.all)
+            } else {
+                HuanCapturePreview(captureManager: captureManager)
+                    .edgesIgnoringSafeArea(.all)
+            }
+            
 
             VStack {
                 statusBar
@@ -104,9 +113,11 @@ struct ContentView: View {
 
                 Spacer()
 
+                
                 bottomControls
                     .padding(.bottom, 10)
                     .padding(.horizontal)
+                    .opacity(store.isScreen ? 0 : 1)
             }
         }
         .statusBar(hidden: true)
@@ -138,6 +149,9 @@ struct ContentView: View {
         }
         .onReceive(captureManager.$currentCameraType) { type in
             log(.info, "类型: \(type.localizedName)")
+        }
+        .onAppear {
+            captureManager.startStreaming()
         }
     }
 
@@ -183,7 +197,6 @@ struct ContentView: View {
 
     private var bottomControls: some View {
         HStack {
-            startStopButton
             Spacer()
             controlsButton
         }
