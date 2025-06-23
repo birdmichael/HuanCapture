@@ -38,6 +38,61 @@ enum Action: Hashable {
     }
 }
 
+struct SettingsView: View {
+    @EnvironmentObject var store: Store
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("视频参数设置")) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("最大比特率: \(store.maxBitrateBps) bps")
+                        Slider(value: Binding(
+                            get: { Double(store.maxBitrateBps) },
+                            set: { store.maxBitrateBps = UInt32($0) }
+                        ), in: 100_000...8_000_000, step: 50_000)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("最小比特率: \(store.minBitrateBps) bps")
+                        Slider(value: Binding(
+                            get: { Double(store.minBitrateBps) },
+                            set: { store.minBitrateBps = UInt32($0) }
+                        ), in: 10_000...5_000_000, step: 10_000)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("最大帧率: \(store.maxFramerateFps) fps")
+                        Slider(value: Binding(
+                            get: { Double(store.maxFramerateFps) },
+                            set: { store.maxFramerateFps = UInt32($0) }
+                        ), in: 5...60, step: 5)
+                    }
+                }
+                
+                Section {
+                    Button("重置为默认值") {
+                        store.maxBitrateBps = 300_000
+                        store.minBitrateBps = 50_000
+                        store.maxFramerateFps = 20
+                    }
+                    .foregroundColor(.red)
+                }
+            }
+            .navigationTitle("参数设置")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("完成") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
 // MARK: - Custom UI Components
 struct MainFunctionButton: View {
     let title: String
@@ -261,7 +316,14 @@ struct DeviceView: View {
             }
         }
         .fullScreenCover(isPresented: $store.showCapture) {
-            ContentView(device: store.selectDeive!, isScreen: store.isScreen)
+            ContentView(device: store.selectDeive!, isScreen: store.isScreen, maxBitrateBps: Int(store.maxBitrateBps), minBitrateBps: Int(store.minBitrateBps), maxFramerateFps: Int(store.maxFramerateFps))
+        }
+        .sheet(isPresented: $store.showTestView) {
+            TestDelegateView()
+        }
+        .sheet(isPresented: $store.showSettings) {
+            SettingsView()
+                .environmentObject(store)
         }
         .environmentObject(store)
     }
@@ -328,6 +390,26 @@ struct DeviceView: View {
                     store.isScreen = true
                     store.performAction(.capture)
                 }
+            }
+            
+            HStack(spacing: 16) {
+                MainFunctionButton(
+                    title: "测试销毁",
+                    icon: "trash.circle.fill",
+                    color: .orange
+                ) {
+                    store.showTestView = true
+                }
+                
+                MainFunctionButton(
+                    title: "参数设置",
+                    icon: "gearshape.fill",
+                    color: .purple
+                ) {
+                    store.showSettings = true
+                }
+                
+                Spacer()
             }
         }
         .padding(.vertical, 8)
@@ -441,9 +523,15 @@ class Store: ObservableObject, MessengerCallback {
     @Published var online: OnlineStatus = .unknown
     @Published var showCapture: Bool = false
     @Published var isScreen: Bool = false
+    @Published var showTestView: Bool = false
+    @Published var showSettings: Bool = false
+    @Published var maxBitrateBps: UInt32 = 300_000
+    @Published var minBitrateBps: UInt32 = 50_000
+    @Published var maxFramerateFps: UInt32 = 20
 
     init() {
         EsMessenger.shared.addDelegate(self)
+        EsMessenger.shared.isDebugLogEnabled = true
         ESConfig.device.idfa("idfa_is_31231")
         ESConfig.device.custom("some_key", value: "some_value")
         ESConfig.device.custom("some_key1", value: "some_value1")
@@ -558,4 +646,84 @@ enum OnlineStatus {
 
 #Preview {
     DeviceView()
+}
+
+class TestDelegate: ObservableObject, MessengerCallback {
+    @Published var messages: [String] = []
+    
+    init() {
+        messages.append("TestDelegate 初始化")
+        EsMessenger.shared.addDelegate(self)
+        messages.append("已添加为EsMessenger代理")
+    }
+    
+    deinit {
+        messages.append("TestDelegate 销毁")
+        EsMessenger.shared.removeDelegate(self)
+        print("TestDelegate 已销毁，并从EsMessenger移除代理")
+    }
+    
+    func onFindDevice(_ device: EsDevice) {
+        messages.append("发现设备: \(device.deviceName)")
+    }
+    
+    func onReceiveEvent(_ event: EsEvent) {
+        messages.append("收到事件: \(event.des)")
+    }
+}
+
+struct TestDelegateView: View {
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var testDelegate = TestDelegate()
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                Text("测试EsMessenger代理销毁")
+                    .font(.headline)
+                    .padding()
+                
+                Text("这个视图会在初始化时添加自己作为EsMessenger的代理，并在销毁时移除自己")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+                
+                List {
+                    ForEach(testDelegate.messages, id: \.self) { message in
+                        Text(message)
+                            .padding(.vertical, 4)
+                    }
+                }
+                .listStyle(InsetGroupedListStyle())
+                
+                Button(action: {
+                    EsMessenger.shared.startDeviceSearch()
+                }) {
+                    Text("搜索设备")
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                }
+                .padding(.horizontal)
+                
+                Button(action: {
+                    dismiss()
+                }) {
+                    Text("关闭视图 (触发deinit)")
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.red)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                }
+                .padding(.horizontal)
+            }
+            .padding(.vertical)
+            .navigationTitle("代理测试")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
 }

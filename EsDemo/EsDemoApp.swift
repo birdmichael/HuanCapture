@@ -5,9 +5,9 @@
 //  Created by BM on 4/28/25.
 //
 
-import SwiftUI
 import es_cast_client_ios
 import HuanCapture
+import SwiftUI
 
 @main
 struct EsDemoApp: App {
@@ -15,12 +15,8 @@ struct EsDemoApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
-                    DeviceView()
-                
+                DeviceView()
             }.environmentObject(store)
-            
         }
-        
     }
 }
-

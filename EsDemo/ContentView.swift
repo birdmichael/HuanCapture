@@ -26,15 +26,15 @@ struct RandomColorAnimatedView: View {
     @State private var currentNumber: Int = 0
     @State private var backgroundColor: Color = .red
     @State private var timer: Timer?
-    
+
     private let colors: [Color] = [.red, .blue, .green, .orange, .purple, .pink, .yellow, .cyan, .mint, .indigo]
-    
+
     var body: some View {
         ZStack {
             backgroundColor
                 .ignoresSafeArea()
                 .animation(.easeInOut(duration: 0.5), value: backgroundColor)
-            
+
             Text("\(currentNumber)")
                 .font(.system(size: 120, weight: .bold, design: .rounded))
                 .foregroundColor(.white)
@@ -49,11 +49,11 @@ struct RandomColorAnimatedView: View {
             timer?.invalidate()
         }
     }
-    
+
     private func startAnimation() {
         timer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: true) { _ in
             withAnimation {
-                currentNumber = Int.random(in: 0...999)
+                currentNumber = Int.random(in: 0 ... 999)
                 backgroundColor = colors.randomElement() ?? .red
             }
         }
@@ -81,10 +81,11 @@ struct ContentView: View {
     @State private var logMessages: [LogEntry] = []
     private let maxLogEntries = 100
 
-    init(device: EsDevice, isScreen: Bool) {
-        let config = HuanCaptureConfig(maxBitrateBps: 300_000,
-                                       minBitrateBps: 50_000,
-                                       maxFramerateFps: 20,
+    init(device: EsDevice, isScreen: Bool, maxBitrateBps: Int = 300_000, minBitrateBps: Int = 50_000, maxFramerateFps: Int = 20) {
+        let config = HuanCaptureConfig(isLoggingEnabled: true,
+                                       maxBitrateBps: maxBitrateBps,
+                                       minBitrateBps: minBitrateBps,
+                                       maxFramerateFps: maxFramerateFps,
                                        scaleResolutionDownBy: 6,
                                        signalingModeInput: .esMessenger(device))
         if isScreen {
@@ -92,7 +93,6 @@ struct ContentView: View {
         } else {
             _captureManager = StateObject(wrappedValue: HuanCaptureManager(frameProvider: CameraFrameProvider(), config: config))
         }
-        
     }
 
     var body: some View {
@@ -104,7 +104,6 @@ struct ContentView: View {
                 HuanCapturePreview(captureManager: captureManager)
                     .edgesIgnoringSafeArea(.all)
             }
-            
 
             VStack {
                 statusBar
@@ -113,7 +112,6 @@ struct ContentView: View {
 
                 Spacer()
 
-                
                 bottomControls
                     .padding(.bottom, 10)
                     .padding(.horizontal)
