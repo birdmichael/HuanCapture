@@ -267,16 +267,32 @@ public class HuanCaptureManager: RTCVideoCapturer, RTCPeerConnectionDelegate, Si
         let initObject = RTCRtpTransceiverInit()
         initObject.direction = .sendOnly
         initObject.streamIds = streamIds
-        if pc.addTransceiver(with: videoTrack, init: initObject) != nil {
-             if config.isLoggingEnabled { logger.debug("Video transceiver added with direction sendOnly.") }
+        
+        if let transceiver = pc.addTransceiver(with: videoTrack, init: initObject) {
+            if config.isLoggingEnabled { logger.debug("Video transceiver added with direction sendOnly.") }
+            let codecs = peerConnectionFactory.rtpSenderCapabilities(forKind: kRTCMediaStreamTrackKindVideo).codecs
+            var newCodecs: [RTCRtpCodecCapability] = []
+            
+            logger.debug("Available codecs: \(codecs.map { $0.name })")
+
+            for capability in codecs {
+                if capability.name.lowercased() == "h264" {
+                    newCodecs.append(capability)
+                    if config.isLoggingEnabled { logger.debug("H.264 codec added to transceiver preferences.") }
+                } else {
+                    if config.isLoggingEnabled { logger.debug("Ignoring codec: \(capability.name)") }
+                }
+            }
+            if config.isLoggingEnabled { logger.debug("Setting codec preferences: \(newCodecs.map { $0.name })") }
+            try transceiver.setCodecPreferences(newCodecs)
         } else {
-             if config.isLoggingEnabled { logger.error("Failed to add video transceiver.") }
-             DispatchQueue.main.async { [weak self] in
-                  guard let self = self else { return }
-                  self.captureError = NSError(domain: "HuanCaptureError", code: 8, userInfo: [NSLocalizedDescriptionKey: "Failed to add video transceiver"])
-             }
-             stopStreaming()
-             return
+            if config.isLoggingEnabled { logger.error("Failed to add video transceiver.") }
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                captureError = NSError(domain: "HuanCaptureError", code: 8, userInfo: [NSLocalizedDescriptionKey: "Failed to add video transceiver"])
+            }
+            stopStreaming()
+            return
         }
 
         let constraints = RTCMediaConstraints(mandatoryConstraints: [kRTCMediaConstraintsOfferToReceiveVideo: kRTCMediaConstraintsValueFalse,
