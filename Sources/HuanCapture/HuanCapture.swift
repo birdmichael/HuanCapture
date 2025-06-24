@@ -205,8 +205,8 @@ public class HuanCaptureManager: RTCVideoCapturer, RTCPeerConnectionDelegate, Si
     private func setupWebRTC() {
         if config.isLoggingEnabled { logger.debug("Setting up WebRTC...") }
 //        let videoEncoderFactory = createH264EncoderFactory()
-        let videoEncoderFactory = RTCVideoEncoderFactoryH264()
-        let videoDecoderFactory = RTCVideoDecoderFactoryH264()
+        let videoEncoderFactory = RTCDefaultVideoEncoderFactory()
+        let videoDecoderFactory = RTCDefaultVideoDecoderFactory()
         peerConnectionFactory = RTCPeerConnectionFactory(encoderFactory: videoEncoderFactory, decoderFactory: videoDecoderFactory)
 
         configureAudioSession()
