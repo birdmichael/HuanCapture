@@ -73,8 +73,8 @@ struct SettingsView: View {
                 
                 Section {
                     Button("重置为默认值") {
-                        store.maxBitrateBps = 300_000
-                        store.minBitrateBps = 50_000
+                        store.maxBitrateBps = 1500_000
+                        store.minBitrateBps = 500_000
                         store.maxFramerateFps = 20
                     }
                     .foregroundColor(.red)
@@ -525,8 +525,8 @@ class Store: ObservableObject, MessengerCallback {
     @Published var isScreen: Bool = false
     @Published var showTestView: Bool = false
     @Published var showSettings: Bool = false
-    @Published var maxBitrateBps: UInt32 = 300_000
-    @Published var minBitrateBps: UInt32 = 50_000
+    @Published var maxBitrateBps: UInt32 = 1500_000
+    @Published var minBitrateBps: UInt32 = 500_000
     @Published var maxFramerateFps: UInt32 = 20
 
     init() {

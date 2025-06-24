@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'HuanCapture'
-  s.version          = '0.1.7'
+  s.version          = '0.1.8'
   s.summary          = 'Screen and audio capture library for iOS.'
   s.homepage         = 'https://github.com/birdmichael/HuanCapture'
   s.license          = { :type => 'MIT', :file => 'LICENSE' }

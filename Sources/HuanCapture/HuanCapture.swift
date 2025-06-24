@@ -205,8 +205,8 @@ public class HuanCaptureManager: RTCVideoCapturer, RTCPeerConnectionDelegate, Si
     private func setupWebRTC() {
         if config.isLoggingEnabled { logger.debug("Setting up WebRTC...") }
 //        let videoEncoderFactory = createH264EncoderFactory()
-        let videoEncoderFactory = RTCDefaultVideoEncoderFactory()
-        let videoDecoderFactory = RTCDefaultVideoDecoderFactory()
+        let videoEncoderFactory = RTCVideoEncoderFactoryH264()
+        let videoDecoderFactory = RTCVideoDecoderFactoryH264()
         peerConnectionFactory = RTCPeerConnectionFactory(encoderFactory: videoEncoderFactory, decoderFactory: videoDecoderFactory)
 
         configureAudioSession()
@@ -268,23 +268,8 @@ public class HuanCaptureManager: RTCVideoCapturer, RTCPeerConnectionDelegate, Si
         initObject.direction = .sendOnly
         initObject.streamIds = streamIds
         
-        if let transceiver = pc.addTransceiver(with: videoTrack, init: initObject) {
+        if pc.addTransceiver(with: videoTrack, init: initObject) != nil {
             if config.isLoggingEnabled { logger.debug("Video transceiver added with direction sendOnly.") }
-            let codecs = peerConnectionFactory.rtpSenderCapabilities(forKind: kRTCMediaStreamTrackKindVideo).codecs
-            var newCodecs: [RTCRtpCodecCapability] = []
-            
-            logger.debug("Available codecs: \(codecs.map { $0.name })")
-
-            for capability in codecs {
-                if capability.name.lowercased() == "h264" {
-                    newCodecs.append(capability)
-                    if config.isLoggingEnabled { logger.debug("H.264 codec added to transceiver preferences.") }
-                } else {
-                    if config.isLoggingEnabled { logger.debug("Ignoring codec: \(capability.name)") }
-                }
-            }
-            if config.isLoggingEnabled { logger.debug("Setting codec preferences: \(newCodecs.map { $0.name })") }
-            try transceiver.setCodecPreferences(newCodecs)
         } else {
             if config.isLoggingEnabled { logger.error("Failed to add video transceiver.") }
             DispatchQueue.main.async { [weak self] in
