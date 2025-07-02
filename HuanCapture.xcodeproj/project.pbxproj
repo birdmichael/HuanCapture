@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		801100C92E156FC9002D9ECF /* HuanCapture in Frameworks */ = {isa = PBXBuildFile; productRef = 801100C82E156FC9002D9ECF /* HuanCapture */; };
+		801100CC2E156FDA002D9ECF /* HuanCapture in Frameworks */ = {isa = PBXBuildFile; productRef = 801100CB2E156FDA002D9ECF /* HuanCapture */; };
 		802A2A4C2DB924FD00F88F2A /* HuanCapture in Frameworks */ = {isa = PBXBuildFile; productRef = 802A2A4B2DB924FD00F88F2A /* HuanCapture */; };
 		802A2A502DB9256E00F88F2A /* HuanCapture in Frameworks */ = {isa = PBXBuildFile; productRef = 802A2A4F2DB9256E00F88F2A /* HuanCapture */; };
 		802A2A582DB9265D00F88F2A /* HuanCapture in Frameworks */ = {isa = PBXBuildFile; productRef = 802A2A572DB9265D00F88F2A /* HuanCapture */; };
@@ -38,6 +40,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		801100682E15647F002D9ECF /* Exceptions for "EsDemo" folder in "EsDemo" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 80FA1D802DBFCE6C0040B8F3 /* EsDemo */;
+		};
 		8097DD342DCC673D0013E750 /* Exceptions for "OC_Demo" folder in "OC_Demo" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -68,6 +77,9 @@
 		};
 		80FA1D822DBFCE6C0040B8F3 /* EsDemo */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				801100682E15647F002D9ECF /* Exceptions for "EsDemo" folder in "EsDemo" target */,
+			);
 			path = EsDemo;
 			sourceTree = "<group>";
 		};
@@ -105,6 +117,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				8059B65F2DE9D2C900B8A380 /* HuanCapture in Frameworks */,
+				801100CC2E156FDA002D9ECF /* HuanCapture in Frameworks */,
+				801100C92E156FC9002D9ECF /* HuanCapture in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -236,6 +250,8 @@
 			name = EsDemo;
 			packageProductDependencies = (
 				8059B65E2DE9D2C900B8A380 /* HuanCapture */,
+				801100C82E156FC9002D9ECF /* HuanCapture */,
+				801100CB2E156FDA002D9ECF /* HuanCapture */,
 			);
 			productName = EsDemo;
 			productReference = 80FA1D812DBFCE6C0040B8F3 /* EsDemo.app */;
@@ -276,7 +292,7 @@
 			mainGroup = 805E14BE2DB7F630004CF67D;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				8059B65D2DE9D2C900B8A380 /* XCLocalSwiftPackageReference "../HuanCapture" */,
+				801100CA2E156FDA002D9ECF /* XCLocalSwiftPackageReference "../HuanCapture" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 805E14C92DB7F630004CF67D /* Products */;
@@ -670,7 +686,9 @@
 				DEVELOPMENT_TEAM = SUKY3PD99D;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = EsDemo/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "使用你的摄像头";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "本地网络请求";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -700,7 +718,9 @@
 				DEVELOPMENT_TEAM = SUKY3PD99D;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = EsDemo/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "使用你的摄像头";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "本地网络请求";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -771,13 +791,21 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		8059B65D2DE9D2C900B8A380 /* XCLocalSwiftPackageReference "../HuanCapture" */ = {
+		801100CA2E156FDA002D9ECF /* XCLocalSwiftPackageReference "../HuanCapture" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../HuanCapture;
 		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		801100C82E156FC9002D9ECF /* HuanCapture */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = HuanCapture;
+		};
+		801100CB2E156FDA002D9ECF /* HuanCapture */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = HuanCapture;
+		};
 		802A2A4B2DB924FD00F88F2A /* HuanCapture */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = HuanCapture;

@@ -28,22 +28,6 @@ struct PrintLog {
     }
 }
 
-// MARK: - H.264 Only Encoder Factory
-
-class H264OnlyEncoderFactory: NSObject, RTCVideoEncoderFactory {
-    func createEncoder(_ info: RTCVideoCodecInfo) -> RTCVideoEncoder? {
-        if info.name.lowercased() == "h264" {
-            return RTCVideoEncoderH264()
-        }
-        return nil
-    }
-    
-    func supportedCodecs() -> [RTCVideoCodecInfo] {
-        let h264Info = RTCVideoCodecInfo(name: "H264")
-        return [h264Info]
-    }
-}
-
 public enum CameraType: RawRepresentable {
     public typealias RawValue = String
 
@@ -193,18 +177,8 @@ public class HuanCaptureManager: RTCVideoCapturer, RTCPeerConnectionDelegate, Si
         if config.isLoggingEnabled { logger.info("HuanCapture deinitialized.") }
     }
 
-    // MARK: - Setup
-
-    private func createH264EncoderFactory() -> RTCVideoEncoderFactory {
-        // Create a custom encoder factory that only supports H.264
-        let customFactory = H264OnlyEncoderFactory()
-        if config.isLoggingEnabled { logger.info("Forcing H.264 video encoder") }
-        return customFactory
-    }
-
     private func setupWebRTC() {
         if config.isLoggingEnabled { logger.debug("Setting up WebRTC...") }
-//        let videoEncoderFactory = createH264EncoderFactory()
         let videoEncoderFactory = RTCDefaultVideoEncoderFactory()
         let videoDecoderFactory = RTCDefaultVideoDecoderFactory()
         peerConnectionFactory = RTCPeerConnectionFactory(encoderFactory: videoEncoderFactory, decoderFactory: videoDecoderFactory)
