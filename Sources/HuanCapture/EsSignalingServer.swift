@@ -1,6 +1,5 @@
 
 import Foundation
-import OSLog
 import es_cast_client_ios
 
 class EsSignalingServer: SignalingServerProtocol {

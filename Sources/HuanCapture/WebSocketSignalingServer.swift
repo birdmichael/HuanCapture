@@ -1,6 +1,5 @@
 import Foundation
 import Network
-import OSLog
 
 // MARK: - Server State Enum
 enum WebSocketServerState {

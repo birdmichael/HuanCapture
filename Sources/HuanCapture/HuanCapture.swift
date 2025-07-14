@@ -6,7 +6,6 @@
 //
 import WebRTC
 import AVFoundation
-import OSLog
 import Combine
 import SwiftUI
 
